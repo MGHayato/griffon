@@ -1,0 +1,647 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>グリフォン開発ロードマップ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap">
+
+<style>
+  /* =========================================================
+     グリフォン開発ロードマップ
+     ゲーム本体の「濃紺 × 金 × ドット文字」を引用しつつ、
+     長文を読む文書として 明るい地に落とす。
+     ========================================================= */
+  :root {
+    --paper:     #f2f4f9;
+    --card:      #ffffff;
+    --ink:       #171b2c;
+    --ink-soft:  #4a5270;
+    --ink-faint: #7c85a3;
+    --rule:      #d9deeb;
+    --deep:      #1e3a6e;
+    --accent:    #b8830f;
+    --accent-bg: #fdf3dc;
+    --done:      #2f7d5c;
+    --done-bg:   #e6f4ec;
+    --warn:      #a8462a;
+    --warn-bg:   #fbeae4;
+    --key:       #6b3fa0;
+    --key-bg:    #f2ecfb;
+
+    --font-dot: "DotGothic16", "MS Gothic", monospace;
+    --font-ui:  "Zen Kaku Gothic New", "Yu Gothic UI", "Meiryo", sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:     #0e1220;
+      --card:      #171d31;
+      --ink:       #e8ecf7;
+      --ink-soft:  #a8b2ce;
+      --ink-faint: #737e9d;
+      --rule:      #2a3350;
+      --deep:      #8fb4f0;
+      --accent:    #f2c14e;
+      --accent-bg: #2e2612;
+      --done:      #6fe0a0;
+      --done-bg:   #10281e;
+      --warn:      #ff9a7a;
+      --warn-bg:   #2e1810;
+      --key:       #c3a0f5;
+      --key-bg:    #221a35;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:     #0e1220;
+    --card:      #171d31;
+    --ink:       #e8ecf7;
+    --ink-soft:  #a8b2ce;
+    --ink-faint: #737e9d;
+    --rule:      #2a3350;
+    --deep:      #8fb4f0;
+    --accent:    #f2c14e;
+    --accent-bg: #2e2612;
+    --done:      #6fe0a0;
+    --done-bg:   #10281e;
+    --warn:      #ff9a7a;
+    --warn-bg:   #2e1810;
+    --key:       #c3a0f5;
+    --key-bg:    #221a35;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    line-height: 1.75;
+    padding: 40px 20px 80px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 780px; margin: 0 auto; }
+
+  /* ===== 見出し ===== */
+  .eyebrow {
+    font-family: var(--font-dot);
+    font-size: 12px; letter-spacing: 3px;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  h1 {
+    font-family: var(--font-dot);
+    font-size: clamp(28px, 5.5vw, 40px);
+    line-height: 1.3; letter-spacing: 1px;
+    text-wrap: balance;
+    margin-bottom: 14px;
+  }
+  .lede {
+    font-size: 15px; color: var(--ink-soft);
+    max-width: 62ch; margin-bottom: 34px;
+  }
+
+  h2 {
+    font-size: 20px; font-weight: 900;
+    letter-spacing: .5px;
+    margin: 52px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--rule);
+    text-wrap: balance;
+  }
+  h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+
+  p { margin-bottom: 12px; max-width: 64ch; }
+  p:last-child { margin-bottom: 0; }
+  strong { font-weight: 900; }
+  em { font-style: normal; color: var(--accent); font-weight: 700; }
+
+  /* ===== 現在地カード ===== */
+  .now {
+    background: var(--card);
+    border: 2px solid var(--ink);
+    border-radius: 10px;
+    box-shadow: inset 0 0 0 2px var(--card), 0 2px 0 var(--ink);
+    padding: 20px 22px;
+    margin-bottom: 12px;
+  }
+  .now-label {
+    font-family: var(--font-dot);
+    font-size: 11px; letter-spacing: 2px;
+    color: var(--done);
+    display: flex; align-items: center; gap: 7px;
+    margin-bottom: 8px;
+  }
+  .now-label::before {
+    content: ""; width: 9px; height: 9px; border-radius: 50%;
+    background: var(--done);
+    box-shadow: 0 0 0 3px var(--done-bg);
+  }
+  .now ul { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+  .now li {
+    font-size: 14px; color: var(--ink-soft);
+    padding-left: 16px; position: relative;
+  }
+  .now li::before {
+    content: "▸"; position: absolute; left: 0; color: var(--ink-faint);
+  }
+
+  /* ===== 目的地 ===== */
+  .goals { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; margin-bottom: 8px; }
+  .goal {
+    background: var(--accent-bg);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .goal .n {
+    font-family: var(--font-dot);
+    font-size: 11px; letter-spacing: 2px; color: var(--accent);
+    display: block; margin-bottom: 3px;
+  }
+  .goal .t { font-size: 15px; font-weight: 900; }
+  .goal .s { font-size: 12.5px; color: var(--ink-soft); margin-top: 3px; line-height: 1.6; }
+
+  /* ===== タイムライン ===== */
+  .timeline {
+    position: relative;
+    margin-top: 8px;
+    padding-left: 46px;
+  }
+  .timeline::before {
+    content: "";
+    position: absolute; left: 17px; top: 12px; bottom: 12px;
+    width: 3px;
+    background: linear-gradient(180deg, var(--done) 0 4%, var(--rule) 12%);
+    border-radius: 2px;
+  }
+
+  .phase {
+    position: relative;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 20px 22px;
+    margin-bottom: 16px;
+  }
+  .phase::before {
+    content: attr(data-n);
+    position: absolute; left: -46px; top: 18px;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--card);
+    border: 3px solid var(--rule);
+    color: var(--ink-faint);
+    font-family: var(--font-dot);
+    font-size: 15px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .phase.key {
+    border-color: var(--key);
+    box-shadow: 0 0 0 3px var(--key-bg);
+  }
+  .phase.key::before { border-color: var(--key); color: var(--key); }
+
+  .phase-head {
+    display: flex; align-items: baseline; gap: 10px;
+    flex-wrap: wrap; margin-bottom: 4px;
+  }
+  .phase-head h3 { font-size: 18px; font-weight: 900; margin: 0; }
+  .tag {
+    font-family: var(--font-dot);
+    font-size: 10.5px; letter-spacing: 1.5px;
+    padding: 2px 8px; border-radius: 4px;
+    white-space: nowrap;
+  }
+  .tag.key  { background: var(--key-bg);  color: var(--key);  border: 1px solid var(--key); }
+  .tag.cost { background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn); }
+  .tag.free { background: var(--done-bg); color: var(--done); border: 1px solid var(--done); }
+
+  .effort {
+    font-family: var(--font-dot);
+    font-size: 11.5px; color: var(--ink-faint);
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
+
+  .phase h4 {
+    font-family: var(--font-dot);
+    font-size: 11px; letter-spacing: 2px;
+    color: var(--ink-faint);
+    margin: 14px 0 6px;
+  }
+  .phase ul { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+  .phase li {
+    font-size: 14px; padding-left: 15px; position: relative;
+    color: var(--ink-soft);
+  }
+  .phase li::before {
+    content: "・"; position: absolute; left: 0; color: var(--ink-faint);
+  }
+
+  .payoff {
+    background: var(--done-bg);
+    border-left: 3px solid var(--done);
+    padding: 10px 14px;
+    border-radius: 0 6px 6px 0;
+    font-size: 14px;
+    margin-top: 14px;
+  }
+  .payoff b { color: var(--done); font-weight: 900; }
+
+  .snag {
+    background: var(--warn-bg);
+    border-left: 3px solid var(--warn);
+    padding: 10px 14px;
+    border-radius: 0 6px 6px 0;
+    font-size: 13.5px;
+    margin-top: 10px;
+    color: var(--ink-soft);
+  }
+  .snag b { color: var(--warn); font-weight: 900; }
+
+  /* ===== 表 ===== */
+  .table-scroll { overflow-x: auto; margin: 14px 0 8px; }
+  table {
+    width: 100%; border-collapse: collapse;
+    font-size: 14px; min-width: 460px;
+  }
+  th, td {
+    text-align: left; padding: 10px 12px;
+    border-bottom: 1px solid var(--rule);
+  }
+  th {
+    font-family: var(--font-dot);
+    font-size: 11.5px; letter-spacing: 1.5px;
+    color: var(--ink-faint); font-weight: 400;
+    border-bottom: 2px solid var(--rule);
+  }
+  td.num {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  tr:last-child td { border-bottom: none; }
+
+  /* ===== 分かれ道 ===== */
+  .fork {
+    display: grid; gap: 12px;
+    grid-template-columns: 1fr 1fr;
+    margin-top: 14px;
+  }
+  .road {
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 16px 18px;
+    background: var(--card);
+  }
+  .road.pick { border-color: var(--done); background: var(--done-bg); }
+  .road .h {
+    font-family: var(--font-dot);
+    font-size: 12px; letter-spacing: 1.5px;
+    margin-bottom: 8px;
+  }
+  .road.pick .h { color: var(--done); }
+  .road.skip .h { color: var(--ink-faint); }
+  .road p { font-size: 13.5px; color: var(--ink-soft); margin: 0; }
+
+  .note {
+    font-size: 13px; color: var(--ink-faint);
+    border-top: 1px solid var(--rule);
+    margin-top: 40px; padding-top: 16px;
+  }
+
+  @media (max-width: 620px) {
+    body { padding: 28px 14px 60px; }
+    .timeline { padding-left: 0; }
+    .timeline::before { display: none; }
+    .phase::before {
+      position: static; margin-bottom: 10px;
+      width: 30px; height: 30px; font-size: 13px;
+    }
+    .goals, .fork { grid-template-columns: 1fr; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+  <div class="eyebrow">GRIFFON / GRID FORMATION</div>
+  <h1>対人戦とアプリ化までの道のり</h1>
+  <p class="lede">
+    CPU対戦のWebゲームから、友達との対人戦、そしてストア配信のスマホアプリへ。
+    全部を一度にやると必ず作り直しが出るので、<strong>順番に意味がある</strong>形で並べた。
+  </p>
+
+  <div class="now">
+    <div class="now-label">いまここ</div>
+    <ul>
+      <li>1ファイルのWebゲーム。CPU対戦で最後まで遊べる（2,212行）</li>
+      <li>カード20種40枚、3レーン盤面、ガード・ブロック・凍結・サーチまで実装ずみ</li>
+      <li>Artifactで公開ずみ、友達に共有ずみ</li>
+      <li>残っている宿題：デッキ4種プリセット（note記事の課題2）</li>
+    </ul>
+  </div>
+
+  <div class="goals">
+    <div class="goal">
+      <span class="n">GOAL 1</span>
+      <div class="t">友達と対人戦</div>
+      <div class="s">離れていても、合言葉で部屋に入って対戦できる</div>
+    </div>
+    <div class="goal">
+      <span class="n">GOAL 2</span>
+      <div class="t">ストアでアプリ配信</div>
+      <div class="s">App Store と Google Play に並べる</div>
+    </div>
+  </div>
+
+  <h2>なぜこの順番なのか</h2>
+  <p>
+    先に知っておいてほしい技術的な事実がひとつある。
+    <strong>Artifactには対人戦を作れる機能（room / db）が実際にある</strong>。
+    サーバーなしで、たぶん1〜2回のセッションで動くものが作れる。
+  </p>
+  <p>
+    でも<em>それはストアアプリに持っていけない</em>。Claude専用の機能だから、
+    アプリの中では動かない。つまりストア配信がゴールなら、
+    そこで作ったものは<strong>丸ごと捨てることになる</strong>。
+  </p>
+  <p>
+    だからこの計画では、対人戦を最初から自前のサーバーで作る。
+    遠回りに見えて、こっちが最短だよ。
+  </p>
+
+  <h2>5つのフェーズ</h2>
+
+  <div class="timeline">
+
+    <div class="phase" data-n="0">
+      <div class="phase-head">
+        <h3>ゲームを完成させる</h3>
+        <span class="tag free">費用なし</span>
+      </div>
+      <div class="effort">目安：セッション2〜3回</div>
+
+      <h4>やること</h4>
+      <ul>
+        <li>デッキ4種プリセット（note記事の課題2）</li>
+        <li>AI同士の対戦を何十戦か回してバランス調整</li>
+      </ul>
+
+      <div class="payoff">
+        <b>終わると：</b>「対戦して面白いゲーム」になる。
+      </div>
+      <div class="snag">
+        <b>なぜ先か：</b>対人戦は面白いゲームが前提。土台のバランスが動いている状態で
+        対戦を作ると、あとで「このカード強すぎ」となったとき二重に直すことになる。
+      </div>
+    </div>
+
+    <div class="phase key" data-n="1">
+      <div class="phase-head">
+        <h3>土台を分ける</h3>
+        <span class="tag key">ここが全部の鍵</span>
+        <span class="tag free">費用なし</span>
+      </div>
+      <div class="effort">目安：セッション3〜4回</div>
+
+      <h4>やること</h4>
+      <ul>
+        <li>ゲームのルールを、画面の操作から切り離して「純粋な計算」にする</li>
+        <li>ゲームの状態をそのまま送れる形にする（<code>unit.owner</code> の6箇所を直すだけで済む見込み）</li>
+        <li>プレイヤーの操作を「命令」として表現する（例：<em>2列目の前に召喚</em> というデータ）</li>
+        <li>1ファイルを分割して、自動テストを入れる</li>
+      </ul>
+
+      <div class="payoff">
+        <b>終わると：</b>見た目も遊び心地も<strong>何も変わらない</strong>。
+        でもこの先の対人戦・アプリ化・不正対策が、全部できる状態になる。
+      </div>
+      <div class="snag">
+        <b>なぜ必要か：</b>対人戦は「2人の画面で同じルールが同じ結果になる」ことが大前提。
+        いまはルールの計算と画面の描き換えが混ざっているので、サーバー側で同じ計算ができない。
+        <br>
+        <b>飛ばすとどうなるか：</b>フェーズ2以降が全部やり直しになる。ここだけは省略できない。
+      </div>
+    </div>
+
+    <div class="phase" data-n="2">
+      <div class="phase-head">
+        <h3>同じ端末で2人対戦</h3>
+        <span class="tag free">費用なし</span>
+      </div>
+      <div class="effort">目安：セッション1〜2回</div>
+
+      <h4>やること</h4>
+      <ul>
+        <li>2人分の操作に対応する</li>
+        <li>交代画面をはさんで、相手に手札を見せない</li>
+      </ul>
+
+      <div class="payoff">
+        <b>終わると：</b>友達と会ったときに<strong>すぐ遊べる</strong>。
+        スマホを渡し合うだけ。サーバーもアカウントも要らない。
+      </div>
+      <div class="snag">
+        <b>ねらい：</b>これはフェーズ1が正しくできたかの実地テストでもある。
+        ここがすんなり動けば、オンライン対戦の土台は信用していい。
+      </div>
+    </div>
+
+    <div class="phase" data-n="3">
+      <div class="phase-head">
+        <h3>オンライン対戦</h3>
+        <span class="tag cost">サーバー代</span>
+      </div>
+      <div class="effort">目安：セッション4〜6回</div>
+
+      <h4>やること</h4>
+      <ul>
+        <li>サーバーを立てる（Node.js ＋ WebSocket）</li>
+        <li>合言葉を入れると同じ部屋に入る仕組み</li>
+        <li>サーバーが審判をする ── 相手の手札は送らない、不正な手は弾く</li>
+        <li>回線が切れたときの復帰</li>
+      </ul>
+
+      <div class="payoff">
+        <b>終わると：</b>離れた友達と対戦できる。<strong>GOAL 1 達成。</strong>
+      </div>
+      <div class="snag">
+        <b>ここで変わること：</b>Artifactの外に出る。自分のURLを持つことになるので、
+        いまのリンクとは別物になる（いまのリンクはCPU対戦版として残せる）。
+        <br>
+        <b>お金：</b>無料枠から始められる。友達数人なら当分ずっと0円のはず。
+      </div>
+    </div>
+
+    <div class="phase" data-n="4">
+      <div class="phase-head">
+        <h3>アプリの形にする（PWA）</h3>
+        <span class="tag free">費用なし</span>
+      </div>
+      <div class="effort">目安：セッション1〜2回</div>
+
+      <h4>やること</h4>
+      <ul>
+        <li>ホーム画面に追加できるようにする（アイコン・全画面起動）</li>
+        <li>電波がなくてもCPU対戦だけは動くようにする</li>
+      </ul>
+
+      <div class="payoff">
+        <b>終わると：</b>アイコンから全画面で起動する。見た目はもうアプリ。
+        <strong>審査なしで今日から配れる。</strong>
+      </div>
+      <div class="snag">
+        <b>これはフェーズ5の土台：</b>ストアアプリも中身はこれ。
+        「電波なしでも動く」はここで作るけど、実はAppleの審査対策でもある（次で説明）。
+      </div>
+    </div>
+
+    <div class="phase" data-n="5">
+      <div class="phase-head">
+        <h3>ストアに出す</h3>
+        <span class="tag cost">年間費用あり</span>
+      </div>
+      <div class="effort">目安：準備セッション2〜3回＋審査待ち 数日〜数週間</div>
+
+      <h4>やること</h4>
+      <ul>
+        <li>Capacitor でアプリの殻をかぶせる（中身はフェーズ4のまま使える）</li>
+        <li>アイコン、スクリーンショット、説明文、プライバシーポリシーを用意</li>
+        <li>Google Play に先に出す → Apple はあとで</li>
+      </ul>
+
+      <div class="payoff">
+        <b>終わると：</b>ストアからインストールできる。<strong>GOAL 2 達成。</strong>
+        AndroidにもiPhoneにも、<strong>同じコードのまま</strong>出せる。
+      </div>
+      <div class="snag">
+        <b>Google を先にする理由：</b>費用が安く、審査が緩く、Windowsだけでビルドできる。
+        <br>
+        <b>Macについて：</b>iOSのビルドはクラウド（GitHub Actions など）でもできるので、
+        Macは<strong>必須ではない</strong>。ただしMacが無いと実機テストとシミュレータが使えないので、
+        「iPhoneで開いたら崩れていた」を審査前に見つけられない。
+        iPhoneを持っている友達にTestFlightで試してもらう手もある。
+        <br>
+        <b>Appleの審査の壁：</b>「ただWebサイトを表示するだけ」のアプリは弾かれる基準がある。
+        フェーズ4で「電波なしでもCPU対戦が動く」を作っておくのが、そのまま対策になる。
+      </div>
+    </div>
+
+  </div>
+
+  <h2>アプリにする方法の選び方</h2>
+  <p>
+    「AndroidにもiPhoneにも出せる書き方」はいくつかある。フェーズ5で <strong>Capacitor</strong> を
+    選んだ理由はここ。<em>今の2,200行がそのまま中身になる</em>から。
+  </p>
+
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr><th>方法</th><th>いまのコード</th><th>学習コスト</th><th>向いているもの</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Capacitor</strong></td>
+          <td><strong>そのまま使える</strong></td>
+          <td>ほぼゼロ</td>
+          <td>Webで作ったものをアプリにする</td>
+        </tr>
+        <tr>
+          <td>React Native</td>
+          <td>見た目は作り直し</td>
+          <td>中〜大</td>
+          <td>ネイティブの操作感が要るアプリ</td>
+        </tr>
+        <tr>
+          <td>Flutter</td>
+          <td>全部作り直し</td>
+          <td>大</td>
+          <td>凝ったUIを両OSで完全に揃えたい</td>
+        </tr>
+        <tr>
+          <td>Unity</td>
+          <td>全部作り直し</td>
+          <td>大</td>
+          <td>3Dや重い演出のゲーム</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    React Native には HTML も CSS も無い。盤面のマス、カードのめくれ、稲妻のSVG、竜巻の
+    <code>conic-gradient</code> ── 見た目はぜんぶ作り直しになる（ルールの計算は流用できる）。
+    グリフォンは絵文字とCSSで動く2Dカードゲームなので、WebViewの速度で困る場面はまず来ない。
+  </p>
+  <p>
+    ただし<strong>フェーズ1をやっていれば、あとから乗り換えるのも難しくない</strong>。
+    ルールが画面から切り離してあれば、載せ替えるのは見た目だけで済むからね。
+  </p>
+
+  <h2>お金がかかるところ</h2>
+  <p>
+    実際に支払う段階では、その都度かならず先に確認するよ。ここは目安として置いておく。
+  </p>
+
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr><th>項目</th><th>費用</th><th>いつ</th><th>種類</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>フェーズ0〜2</td><td class="num">0円</td><td>—</td><td>—</td></tr>
+        <tr><td>サーバー</td><td class="num">0円 〜 月1,000円</td><td>フェーズ3</td><td>使った分だけ</td></tr>
+        <tr><td>Google Play 登録</td><td class="num">約4,000円</td><td>フェーズ5</td><td>初回だけ</td></tr>
+        <tr><td>Apple Developer</td><td class="num">約15,000円</td><td>フェーズ5</td><td>毎年</td></tr>
+        <tr><td>Mac（iOS実機テスト用・任意）</td><td class="num">中古5万円〜</td><td>フェーズ5</td><td>一度きり</td></tr>
+        <tr><td>独自ドメイン（任意）</td><td class="num">年1,500円ほど</td><td>フェーズ3以降</td><td>毎年</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>寄り道するなら、ここ</h2>
+  <p>
+    「とにかく早く友達と対戦してみたい」なら、Artifactの <code>room</code> 機能を使う手がある。
+    判断材料として両方置いておく。
+  </p>
+
+  <div class="fork">
+    <div class="road pick">
+      <div class="h">▶ 計画どおり進む</div>
+      <p>
+        フェーズ1→2で、会ったときに遊べる形が先に手に入る。
+        オンライン対戦は少し先だけど、作ったものが全部アプリに引き継がれる。
+      </p>
+    </div>
+    <div class="road skip">
+      <div class="h">▷ 先に room で試す</div>
+      <p>
+        1〜2セッションでオンライン対戦が動く。ただし相手もClaudeアカウントが必要で、
+        ストアアプリには持っていけないので、あとで捨てることになる。
+      </p>
+    </div>
+  </div>
+
+  <h2>いま決めなくていいこと</h2>
+  <p>
+    考え出すと止まらなくなるやつ。フェーズ3を越えるまで放っておいて大丈夫。
+  </p>
+  <ul class="now" style="border:none;box-shadow:none;background:none;padding:0;">
+    <li>課金やアイテムをどうするか</li>
+    <li>ゲーム名の商標登録</li>
+    <li>大人数がアクセスしたときのサーバー増強</li>
+    <li>デッキビルダー（プリセット4種が回ってからでいい）</li>
+  </ul>
+
+  <p class="note">
+    この計画は決定事項じゃなくて、順番の提案。
+    「対人戦だけでいい、アプリはやめた」となればフェーズ4・5は消えるし、
+    途中で面白い脱線が見つかったらそっちを優先していいよ。
+    ただしフェーズ1（土台を分ける）だけは、どの道を選んでも通ることになる。
+  </p>
+
+</div>

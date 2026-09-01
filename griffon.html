@@ -1,0 +1,2214 @@
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>グリフォン</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap">
+
+<style>
+  /* =========================================================
+     グリフォン（GRID FORMATION）─ 盤面カードバトル
+     ビジュアル: 往年のRPGの「コマンドウィンドウ」を構造の軸に。
+     白い2重枠 × 濃紺の窓 × ドット文字。単一テーマで作り切る。
+     ========================================================= */
+  :root {
+    --ink:      #04081a;   /* 一番奥の闇 */
+    --deep:     #0a1233;   /* 盤面の地 */
+    --window:   #101c42;   /* ウィンドウの中身 */
+    --rule:     #e9edff;   /* ウィンドウの白枠 */
+    --gold:     #f2c14e;
+    --gold-dk:  #8a6410;
+    --azure:    #4380d8;   /* 味方 */
+    --azure-dk: #16265c;
+    --crimson:  #b23a55;   /* 敵 */
+    --crimson-dk:#3d0f20;
+    --mint:     #6fe0a0;   /* 行動可能 */
+    --danger:   #ff5f6d;   /* 攻撃対象 */
+    --text:     #eef1ff;
+    --dim:      #8f9cc4;
+
+    --font-dot: "DotGothic16", "MS Gothic", monospace;
+    --font-ui:  "Zen Kaku Gothic New", "Yu Gothic UI", "Meiryo", sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background:
+      radial-gradient(ellipse 80% 55% at 50% 42%, #16255e 0%, var(--deep) 55%, var(--ink) 100%);
+    color: var(--text);
+    font-family: var(--font-ui);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 10px 8px 24px;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 星のような細かい光をうっすら */
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 12% 18%, rgba(255,255,255,.5), transparent),
+      radial-gradient(1px 1px at 78% 12%, rgba(255,255,255,.35), transparent),
+      radial-gradient(1px 1px at 34% 78%, rgba(255,255,255,.3), transparent),
+      radial-gradient(1px 1px at 88% 66%, rgba(255,255,255,.4), transparent),
+      radial-gradient(1px 1px at 58% 34%, rgba(255,255,255,.25), transparent);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  #screen {
+    width: 100%;
+    max-width: 1020px;
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  /* ===== 共通：RPGのコマンドウィンドウ ===== */
+  .win {
+    background: linear-gradient(180deg, rgba(18,32,74,.94), rgba(8,14,38,.94));
+    border: 2px solid var(--rule);
+    border-radius: 9px;
+    box-shadow: inset 0 0 0 2px rgba(4,8,26,.9), 0 3px 14px rgba(0,0,0,.55);
+  }
+
+  /* ===== リーダー枠 ===== */
+  .leader-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 7px 12px;
+  }
+  .leader-portrait {
+    width: 60px; height: 60px; flex-shrink: 0;
+    border-radius: 7px;
+    border: 2px solid var(--gold-dk);
+    background: linear-gradient(160deg, #3a63b0, #101c42);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px;
+    position: relative;
+    transition: transform .12s;
+  }
+  .enemy-side .leader-portrait {
+    background: linear-gradient(160deg, #8d2b46, var(--crimson-dk));
+  }
+  .leader-portrait.targetable {
+    box-shadow: 0 0 0 3px var(--danger), 0 0 20px rgba(255,95,109,.75);
+    cursor: pointer;
+    animation: glow 1s infinite;
+  }
+  .leader-portrait.hit { animation: shake .3s; }
+
+  .leader-info { flex: 1; min-width: 0; }
+  .leader-name {
+    font-family: var(--font-dot);
+    font-size: 15px; letter-spacing: 2px;
+  }
+  .enemy-side .leader-name { color: #ff9fb0; }
+  .player-side .leader-name { color: #9fc8ff; }
+
+  .stat-bar {
+    display: flex; align-items: center; gap: 9px;
+    margin-top: 4px; flex-wrap: wrap;
+    font-family: var(--font-dot);
+    font-variant-numeric: tabular-nums;
+  }
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 15px; letter-spacing: 1px;
+    padding: 0 9px; border-radius: 4px;
+    border: 1px solid currentColor;
+  }
+  .badge span { color: var(--text); }
+  .badge.hp { color: #ff8e9c; background: rgba(178,58,85,.22); }
+  .badge.mp { color: #7cc4ff; background: rgba(67,128,216,.2); }
+  .badge.deck { color: var(--dim); background: transparent; font-size: 13px; }
+  .badge.guard {
+    color: var(--mint); background: rgba(111,224,160,.14);
+    font-size: 12px; letter-spacing: 0;
+  }
+  .badge[hidden] { display: none; }
+
+  .mp-pips { display: flex; gap: 2px; }
+  .pip {
+    width: 8px; height: 14px; border-radius: 1px;
+    background: #0e1838; border: 1px solid #2f4a86;
+  }
+  .pip.full {
+    background: linear-gradient(180deg, #9ad8ff, #2f7ad0);
+    border-color: #cfeaff;
+    box-shadow: 0 0 6px rgba(122,196,255,.85);
+  }
+
+  .enemy-hand { display: flex; align-items: center; padding-left: 8px; }
+  .card-back {
+    width: 26px; height: 38px; margin-left: -9px;
+    border-radius: 3px;
+    background: linear-gradient(150deg, #8d2b46, var(--crimson-dk));
+    border: 2px solid var(--gold-dk);
+    box-shadow: 0 2px 5px rgba(0,0,0,.6);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; color: var(--gold-dk);
+  }
+
+  /* ===== 盤面 ===== */
+  .board {
+    display: flex; flex-direction: column; gap: 5px;
+    padding: 9px;
+    background: rgba(3,6,20,.42);
+    border-radius: 10px;
+    border: 1px solid rgba(120,160,255,.16);
+  }
+  .row {
+    display: flex; justify-content: center; gap: 7px;
+    min-height: 102px;
+    position: relative;
+  }
+  .row-tag {
+    position: absolute; left: 2px; top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--font-dot);
+    font-size: 10px; letter-spacing: 2px;
+    color: var(--dim); opacity: .55;
+    writing-mode: vertical-rl;
+    white-space: nowrap;
+  }
+
+  .slot {
+    width: 86px; height: 98px;
+    border-radius: 7px;
+    border: 2px dashed rgba(120,160,255,.16);
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    transition: background .15s, border-color .15s;
+  }
+  .slot.droppable {
+    border-color: var(--gold);
+    background: rgba(242,193,78,.12);
+    cursor: pointer;
+    animation: glow 1.2s infinite;
+  }
+  .slot.droppable:hover { background: rgba(242,193,78,.3); }
+
+  /* たて一列の効果：レーンまるごと ねらう */
+  .slot.lane-target {
+    border-color: var(--danger);
+    background: rgba(255,95,109,.16);
+    cursor: pointer;
+    animation: glow 1s infinite;
+  }
+  .slot.lane-target:hover { background: rgba(255,95,109,.34); }
+
+  /* ===== 盤上ユニット ===== */
+  .unit {
+    width: 100%; height: 100%;
+    border-radius: 7px;
+    background: linear-gradient(165deg, #5a8de0 0%, #23407e 52%, #101c42 100%);
+    border: 2px solid var(--gold-dk);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    position: relative;
+    box-shadow: 0 3px 8px rgba(0,0,0,.55);
+    transition: transform .12s, filter .2s, opacity .3s;
+  }
+  .unit.foe {
+    background: linear-gradient(165deg, #bd4a68 0%, #6d2038 52%, var(--crimson-dk) 100%);
+    border-color: #7a2540;
+  }
+  .unit-emoji { font-size: 31px; line-height: 1; filter: drop-shadow(0 2px 3px rgba(0,0,0,.65)); }
+  .unit-name {
+    font-size: 10px; font-weight: 700; margin-top: 3px;
+    text-align: center; line-height: 1.1; padding: 0 2px;
+    text-shadow: 0 1px 2px #000;
+  }
+  .unit-name.long  { font-size: 9px;   letter-spacing: -.5px; }
+  .unit-name.xlong { font-size: 8.2px; letter-spacing: -.7px; }
+  .unit-stats {
+    position: absolute; bottom: -3px; left: 0; right: 0;
+    display: flex; justify-content: space-between; padding: 0 3px;
+  }
+  .orb {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-dot);
+    font-size: 13px; font-variant-numeric: tabular-nums;
+    border: 2px solid #04081a;
+    box-shadow: 0 1px 3px rgba(0,0,0,.6);
+  }
+  .orb.atk { background: linear-gradient(160deg, #ffd97a, #c08c12); color: #2e1e00; }
+  .orb.hp  { background: linear-gradient(160deg, #ff8b8b, #a81f1f); color: #fff; }
+  .orb.hp.hurt { background: linear-gradient(160deg, #ffab52, #b84a00); }
+
+  .unit.ready {
+    box-shadow: 0 0 0 2px var(--mint), 0 0 14px rgba(111,224,160,.6);
+    cursor: pointer;
+  }
+  .unit.ready:hover { transform: translateY(-4px); }
+  .unit.picked {
+    box-shadow: 0 0 0 3px var(--gold), 0 0 22px rgba(242,193,78,.85);
+    transform: translateY(-6px);
+  }
+  .unit.targetable {
+    box-shadow: 0 0 0 3px var(--danger), 0 0 18px rgba(255,95,109,.8);
+    cursor: pointer;
+    animation: glow 1s infinite;
+  }
+  .unit.targetable:hover { transform: scale(1.06); }
+  .unit.sick::after {
+    content: "💤";
+    position: absolute; top: 1px; right: 2px; font-size: 12px;
+  }
+  /* こおっている＝つぎの じぶんのターンまで こうげきできない */
+  .unit.frozen::after {
+    content: "❄️";
+    position: absolute; top: 1px; right: 2px; font-size: 12px;
+  }
+  .unit.frozen {
+    background: linear-gradient(165deg, #2b4a63 0%, #17324a 52%, #0b1c2c 100%);
+    border-color: #6fc3e8;
+    box-shadow: 0 0 0 2px rgba(111,195,232,.55), 0 2px 6px rgba(0,0,0,.5);
+  }
+  .unit.frozen .unit-emoji { filter: brightness(.8) saturate(.6); }
+
+  /* 動けないユニット（召喚したばかり / 行動ずみ）は はっきり暗く */
+  .unit.spent {
+    background: linear-gradient(165deg, #26314c 0%, #141c30 52%, #080d1c 100%);
+    border-color: #3c4664;
+    box-shadow: 0 2px 5px rgba(0,0,0,.55);
+  }
+  .unit.spent .unit-emoji { filter: grayscale(.85) brightness(.55); }
+  .unit.spent .unit-name  { color: #78829e; text-shadow: none; }
+  .unit.spent .orb        { filter: saturate(.35) brightness(.75); }
+  .unit.spent::before, .unit.spent::after { opacity: 1; }   /* 🛡と💤は はっきり残す */
+  /* 前列のなかまに かばわれている＝こうげきされない */
+  .unit.covered::before {
+    content: "🛡";
+    position: absolute; top: 1px; left: 2px; font-size: 11px;
+    filter: drop-shadow(0 1px 2px #000);
+  }
+  .unit.hit { animation: shake .3s; }
+  .unit.dying { animation: die .45s forwards; pointer-events: none; }
+
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20% { transform: translateX(-6px) rotate(-4deg); }
+    50% { transform: translateX(6px) rotate(4deg); }
+    80% { transform: translateX(-3px); }
+  }
+  @keyframes die { to { transform: scale(.25) rotate(22deg); opacity: 0; filter: brightness(2.5); } }
+  @keyframes glow { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.4); } }
+
+  /* ===== 中央バー（メッセージウィンドウ＋ボタン） ===== */
+  .center-bar {
+    display: flex; align-items: stretch; gap: 9px;
+    padding: 3px 0;
+  }
+  #log {
+    flex: 1;
+    font-family: var(--font-dot);
+    font-size: 13px; letter-spacing: .5px;
+    height: 46px;
+    overflow: hidden;
+    padding: 5px 11px;
+    display: flex; flex-direction: column;
+  }
+  #log div { line-height: 1.5; color: var(--dim); }
+  #log div:first-child { color: var(--gold); }
+
+  .btn {
+    font-family: var(--font-dot);
+    font-size: 15px; letter-spacing: 2px;
+    padding: 8px 18px;
+    color: #2b1c00;
+    background: linear-gradient(180deg, #ffe293, var(--gold) 45%, #c08c12);
+    border: 2px solid #6b4c08;
+    border-radius: 7px;
+    cursor: pointer;
+    box-shadow: 0 3px 0 #6b4c08, 0 5px 12px rgba(0,0,0,.5);
+    transition: filter .1s, transform .08s, box-shadow .08s;
+    white-space: nowrap;
+  }
+  .btn:hover:not(:disabled) { filter: brightness(1.09); }
+  .btn:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 0 0 #6b4c08; }
+  .btn:focus-visible { outline: 3px solid var(--mint); outline-offset: 2px; }
+  .btn:disabled {
+    background: linear-gradient(180deg, #4a5372, #262d47);
+    color: #7d87a8; border-color: #1a2036;
+    box-shadow: 0 3px 0 #1a2036;
+    cursor: default;
+  }
+  .btn.cancel {
+    background: linear-gradient(180deg, #ffa6b2, #c8394f 45%, #7d1a2c);
+    color: #fff; border-color: #5a1020;
+    box-shadow: 0 3px 0 #5a1020;
+  }
+
+  /* ===== 手札 ===== */
+  .hint {
+    text-align: center;
+    font-family: var(--font-dot);
+    font-size: 12px; letter-spacing: 1px;
+    color: var(--dim);
+    min-height: 18px;
+  }
+  .hand-area {
+    display: flex; justify-content: center; align-items: flex-end;
+    gap: 6px; min-height: 186px; padding-top: 12px;
+    flex-wrap: wrap;
+  }
+  .card {
+    width: 104px; height: 176px;
+    border-radius: 8px;
+    background: linear-gradient(170deg, #eef2ff 0%, #bcc9ea 42%, #8fa2cc 100%);
+    border: 3px solid var(--gold-dk);
+    position: relative;
+    cursor: pointer;
+    padding: 4px;
+    display: flex; flex-direction: column;
+    box-shadow: 0 4px 10px rgba(0,0,0,.6);
+    transition: transform .15s, box-shadow .15s, filter .15s;
+    flex-shrink: 0;
+  }
+  .card.spell { background: linear-gradient(170deg, #f4e6ff 0%, #cdb4ec 42%, #9d7cc6 100%); }
+  .card:hover { transform: translateY(-14px); z-index: 10; }
+  .card.playable { border-color: var(--gold); box-shadow: 0 0 13px rgba(242,193,78,.55), 0 4px 10px rgba(0,0,0,.6); }
+  .card.locked { filter: grayscale(.8) brightness(.55); cursor: default; }
+  .card.locked:hover { transform: none; }
+  .card.picked {
+    transform: translateY(-22px);
+    box-shadow: 0 0 0 3px var(--gold), 0 0 28px rgba(242,193,78,.9);
+    z-index: 20;
+  }
+  .card-cost {
+    position: absolute; top: -9px; left: -9px;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #a8dcff, #1f6cc0 58%, #0b3a72);
+    border: 2px solid #d6ecff;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-dot);
+    font-size: 16px; color: #fff;
+    text-shadow: 0 1px 2px #000;
+    box-shadow: 0 2px 5px rgba(0,0,0,.6);
+  }
+  .card-art {
+    height: 38px; margin-top: 11px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 31px;
+  }
+  .card-name {
+    text-align: center; font-size: 11px; font-weight: 900;
+    color: #16203c; line-height: 1.15; padding: 2px 0;
+    letter-spacing: -.4px; flex-shrink: 0;
+    border-top: 1px solid rgba(0,0,0,.22);
+    border-bottom: 1px solid rgba(0,0,0,.22);
+    margin: 3px 0 2px;
+  }
+  .card-text {
+    flex: 1 1 auto; min-height: 0;
+    font-size: 9px; font-weight: 500;
+    color: #26304c; text-align: center; line-height: 1.32;
+    padding: 1px;
+  }
+  /* 説明が長いカードは 自動で 文字を小さく */
+  .card-text.long  { font-size: 8.2px; line-height: 1.28; letter-spacing: -.2px; }
+  .card-text.xlong { font-size: 7.5px; line-height: 1.24; letter-spacing: -.3px; }
+  .card-foot { display: flex; justify-content: space-between; margin: 0 -2px -2px; flex-shrink: 0; }
+  .card .orb { width: 24px; height: 24px; font-size: 14px; }
+  .spell-tag {
+    width: 100%; text-align: center;
+    font-family: var(--font-dot);
+    font-size: 10px; letter-spacing: 2px; color: #4a2a70;
+  }
+
+  /* ===== ダメージ数字（再描画に消されない独立レイヤー） ===== */
+  #fx { position: fixed; inset: 0; pointer-events: none; z-index: 90; }
+  .fx-num {
+    position: absolute;
+    font-family: var(--font-dot);
+    font-size: 27px; letter-spacing: 1px;
+    text-shadow: 0 0 7px #000, 0 2px 3px #000;
+    transform: translate(-50%, -50%);
+    animation: floatUp 1s forwards;
+  }
+  .fx-num.dmg  { color: #ff6a78; }
+  .fx-num.heal { color: var(--mint); }
+  .fx-num.buff { color: var(--gold); }
+  @keyframes floatUp {
+    0%   { opacity: 0; transform: translate(-50%, -30%) scale(.55); }
+    22%  { opacity: 1; transform: translate(-50%, -70%) scale(1.3); }
+    100% { opacity: 0; transform: translate(-50%, -170%) scale(1); }
+  }
+
+  /* =========================================================
+     とくぎの エフェクト（#fx レイヤーに 絶対配置）
+     ========================================================= */
+  .fx { position: absolute; pointer-events: none; }
+
+  /* フレア：オレンジの炎が ぼわっと */
+  .fx-flare {
+    width: 84px; height: 84px; border-radius: 50%;
+    background: radial-gradient(circle,
+      #fffbe8 0%, #ffd070 22%, #ff9a2e 45%, #ff5a1f 62%, rgba(255,70,20,0) 74%);
+    animation: flareBoom .6s ease-out forwards;
+  }
+  @keyframes flareBoom {
+    0%   { opacity: 0; transform: translate(-50%,-50%) scale(.15); }
+    22%  { opacity: 1; transform: translate(-50%,-50%) scale(1.2); }
+    55%  { opacity: .95; transform: translate(-50%,-50%) scale(.95); }
+    100% { opacity: 0; transform: translate(-50%,-50%) scale(1.4); }
+  }
+
+  /* 鉄の剣：剣が浮かんで 消える */
+  .fx-sword {
+    font-size: 40px; line-height: 1;
+    filter: drop-shadow(0 0 10px #ffe08a) drop-shadow(0 2px 4px #000);
+    animation: swordRise .85s ease-out forwards;
+  }
+  @keyframes swordRise {
+    0%   { opacity: 0; transform: translate(-50%,-10%) scale(.5) rotate(-35deg); }
+    30%  { opacity: 1; transform: translate(-50%,-65%) scale(1.25) rotate(-8deg); }
+    65%  { opacity: 1; transform: translate(-50%,-80%) scale(1.05) rotate(0deg); }
+    100% { opacity: 0; transform: translate(-50%,-125%) scale(.95) rotate(6deg); }
+  }
+
+  /* 聖水：リーダーが 青く光る */
+  .fx-blue-glow {
+    border-radius: 9px;
+    background: radial-gradient(circle, rgba(124,196,255,.5), rgba(124,196,255,.06) 72%);
+    box-shadow: 0 0 0 3px rgba(124,196,255,.9), 0 0 34px 12px rgba(124,196,255,.7);
+    animation: fxFade .95s ease-out forwards;
+  }
+
+  /* 回復：緑のキラキラ */
+  .fx-heal-glow {
+    border-radius: 9px;
+    background: radial-gradient(circle, rgba(111,224,160,.5), rgba(111,224,160,.04) 72%);
+    box-shadow: 0 0 0 2px rgba(111,224,160,.9), 0 0 28px 10px rgba(111,224,160,.6);
+    animation: fxFade 1s ease-out forwards;
+  }
+  .fx-spark {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #ddffe9;
+    box-shadow: 0 0 9px 3px #6fe0a0;
+    animation: sparkFly 1s ease-out forwards;
+  }
+  @keyframes sparkFly {
+    0%   { opacity: 0; transform: translate(-50%,-50%) scale(.3); }
+    20%  { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+    100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(.5); }
+  }
+
+  /* ゆうきの歌：自分の盤面が オレンジに光る */
+  .fx-field-glow {
+    border-radius: 10px;
+    background: linear-gradient(0deg, rgba(255,150,40,.38), rgba(255,200,90,.1));
+    box-shadow: inset 0 0 36px rgba(255,165,55,.75), 0 0 22px rgba(255,150,40,.5);
+    animation: fxFade 1.1s ease-out forwards;
+  }
+
+  /* つむじ風：ぐるぐる回る風 */
+  .fx-whirl {
+    border-radius: 50% / 42%;
+    background: conic-gradient(from 0deg,
+      rgba(220,240,255,0) 0deg, rgba(200,232,255,.8) 40deg, rgba(220,240,255,0) 90deg,
+      rgba(220,240,255,0) 180deg, rgba(180,220,255,.65) 220deg, rgba(220,240,255,0) 270deg);
+    filter: blur(1px) drop-shadow(0 0 10px rgba(180,220,255,.8));
+    animation: whirlSpin 1s ease-out forwards;
+  }
+  @keyframes whirlSpin {
+    0%   { opacity: 0; transform: rotate(0deg) scale(.45); }
+    18%  { opacity: 1; }
+    75%  { opacity: 1; }
+    100% { opacity: 0; transform: rotate(1080deg) scale(1.1); }
+  }
+
+  /* サンダー：黄色い稲光が たて一列を かけぬける */
+  .fx-bolt svg { width: 100%; height: 100%; display: block; }
+  .fx-bolt {
+    filter: drop-shadow(0 0 12px #ffe14a) drop-shadow(0 0 26px rgba(255,225,74,.7));
+    animation: boltStrike .55s steps(1) forwards;
+  }
+  @keyframes boltStrike {
+    0%, 100% { opacity: 0; }
+    8%, 34%  { opacity: 1; }
+    20%      { opacity: .35; }
+    50%      { opacity: .9; }
+    72%      { opacity: .4; }
+  }
+  .fx-lane-flash {
+    border-radius: 8px;
+    background: linear-gradient(180deg, rgba(255,120,120,.05), rgba(255,90,90,.42), rgba(255,120,120,.05));
+    box-shadow: 0 0 22px rgba(255,90,90,.6);
+    animation: fxFade .6s ease-out forwards;
+  }
+
+  /* ストーム：敵全体を つつむ 激しい嵐 */
+  .fx-storm {
+    border-radius: 10px; overflow: hidden;
+    background: linear-gradient(120deg, rgba(110,165,255,.3), rgba(40,70,140,.5));
+    box-shadow: inset 0 0 40px rgba(160,200,255,.5);
+    animation: fxFade 1.2s ease-out forwards;
+  }
+  .fx-storm::before {
+    content: ""; position: absolute; inset: -60%;
+    background: repeating-linear-gradient(112deg,
+      rgba(255,255,255,.55) 0 2px, rgba(255,255,255,0) 2px 13px);
+    animation: rainSlide .55s linear infinite;
+  }
+  .fx-storm::after {
+    content: ""; position: absolute; inset: -30%;
+    background: conic-gradient(from 0deg,
+      rgba(255,255,255,0), rgba(200,225,255,.4), rgba(255,255,255,0) 120deg);
+    animation: whirlSpin 1.2s linear forwards;
+  }
+  @keyframes rainSlide {
+    from { transform: translate(0, 0); }
+    to   { transform: translate(-13px, 32px); }
+  }
+
+  @keyframes fxFade {
+    0%   { opacity: 0; }
+    18%  { opacity: 1; }
+    70%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  /* ===== モーダル ===== */
+  #overlay {
+    position: fixed; inset: 0;
+    background: rgba(2,4,14,.88);
+    display: none; align-items: center; justify-content: center;
+    z-index: 200; padding: 16px;
+  }
+  #overlay.show { display: flex; }
+  .modal {
+    max-width: 520px; width: 100%;
+    padding: 26px 30px 24px;
+    text-align: center;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #16265c, #070d26);
+    border: 2px solid var(--rule);
+    box-shadow: inset 0 0 0 2px rgba(4,8,26,.9), 0 0 60px rgba(67,128,216,.3);
+  }
+  .modal h1 {
+    font-family: var(--font-dot);
+    font-size: 30px; letter-spacing: 3px;
+    color: var(--gold);
+    text-shadow: 0 2px 0 #6b4c08, 0 4px 10px rgba(0,0,0,.8);
+    margin-bottom: 6px;
+    text-wrap: balance;
+  }
+  .modal .sub {
+    font-family: var(--font-dot);
+    font-size: 12px; letter-spacing: 2px; color: var(--dim);
+    margin-bottom: 18px;
+  }
+  .rules {
+    text-align: left;
+    font-size: 13px; line-height: 1.75;
+    display: flex; flex-direction: column; gap: 7px;
+    margin-bottom: 20px;
+  }
+  .rule-line { display: flex; gap: 9px; align-items: baseline; }
+  .rule-key {
+    font-family: var(--font-dot);
+    font-size: 12px; letter-spacing: 1px;
+    color: var(--gold);
+    flex-shrink: 0; width: 4.6em;
+  }
+  .rule-line b { color: #9fc8ff; }
+  .modal-note { font-size: 11px; color: var(--dim); margin-top: 14px; line-height: 1.6; }
+
+  .foot {
+    display: flex; justify-content: center; gap: 14px;
+    font-family: var(--font-dot);
+    font-size: 11px; letter-spacing: 1px;
+    color: var(--dim);
+    padding-top: 4px;
+  }
+  .foot button {
+    font: inherit; color: var(--dim);
+    background: none; border: none; cursor: pointer;
+    border-bottom: 1px dotted var(--dim);
+  }
+  .foot button:hover { color: var(--gold); border-color: var(--gold); }
+  .foot button.quiet { opacity: .45; }
+  .foot button.quiet:hover { opacity: 1; color: #ff9fb0; border-color: #ff9fb0; }
+  .foot button.armed { opacity: 1; color: #ff9fb0; border-color: #ff9fb0; }
+  .foot button:focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+  }
+
+  /* ===== スマホ たて画面：画面幅を いっぱいに つかって 文字を大きく ===== */
+  @media (max-width: 720px) {
+    .slot { width: 68px; height: 86px; }
+    .row { min-height: 90px; }
+    .unit-emoji { font-size: 25px; }
+    .unit-name { font-size: 9px; }
+    .card { width: 90px; height: 164px; }
+    .card-art { font-size: 26px; height: 32px; margin-top: 10px; }
+    .card-name { font-size: 10px; }
+    .card-text { font-size: 8.5px; line-height: 1.3; }
+    .leader-portrait { width: 48px; height: 48px; font-size: 26px; }
+    #log { font-size: 11px; height: 42px; }
+    .btn { font-size: 13px; padding: 7px 12px; }
+  }
+  @media (max-width: 540px) {
+    /* 1画面に おさめる。文字の大きさは 落とさず、余白とマスの高さで かせぐ */
+    body { padding: 3px 4px 4px; }
+    #screen { gap: 4px; }
+
+    /* マスの高さは 画面の高さから 決める（横幅は ひろいまま） */
+    .slot {
+      width: 30vw; max-width: 108px;
+      height: clamp(74px, 11.2dvh, 96px);
+    }
+    .row { min-height: 0; gap: 5px; }
+    .board { padding: 5px 4px; gap: 4px; }
+    .row-tag { font-size: 9px; left: -1px; }
+
+    .unit-emoji { font-size: 29px; }
+    .unit-name  { font-size: 10.5px; margin-top: 2px; }
+    .unit-name.long  { font-size: 9.5px; }
+    .unit-name.xlong { font-size: 8.6px; }
+    .orb { width: 22px; height: 22px; font-size: 12.5px; }
+    .unit.sick::after, .unit.covered::before { font-size: 13px; }
+
+    .leader-row { gap: 7px; padding: 3px 7px; }
+    .leader-portrait { width: 38px; height: 38px; font-size: 21px; }
+    .leader-name { font-size: 11px; letter-spacing: 1px; }
+    .stat-bar { gap: 5px; margin-top: 1px; }
+    .badge { font-size: 13.5px; padding: 0 6px; gap: 3px; }
+    .badge.deck, .badge.guard { font-size: 10.5px; }
+    .mp-pips { display: none; }
+
+    .center-bar { padding: 1px 0; gap: 7px; }
+    #log { font-size: 11.5px; height: 23px; padding: 2px 8px; }
+    #log div:nth-child(n+2) { display: none; }      /* ログは 1行だけ */
+    .btn { font-size: 13px; padding: 6px 11px; }
+
+    .hint { font-size: 10.5px; min-height: 13px; }
+    .foot { padding-top: 0; font-size: 10px; gap: 12px; }
+
+    /* 手札は 1段のまま よこスクロール（カードを 小さくしないため） */
+    .hand-area {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      overflow-y: visible;
+      justify-content: flex-start;
+      padding: 11px 10px 4px;
+      min-height: 0;
+      scroll-snap-type: x proximity;
+      -webkit-overflow-scrolling: touch;
+    }
+    .hand-area::-webkit-scrollbar { height: 4px; }
+    .hand-area::-webkit-scrollbar-thumb { background: rgba(242,193,78,.5); border-radius: 2px; }
+    .card { scroll-snap-align: center; width: 86px; height: clamp(140px, 19.5dvh, 158px); }
+    .card-art { height: 30px; margin-top: 9px; font-size: 24px; }
+    .card-name { font-size: 9.5px; margin: 2px 0 1px; }
+    .card-cost { width: 27px; height: 27px; font-size: 15px; top: -8px; left: -8px; }
+    .card .orb { width: 22px; height: 22px; font-size: 12.5px; }
+  }
+
+  /* 指で さわる端末では カードの浮き上がりを 切る（タップで 固まるため） */
+  @media (hover: none) {
+    .card:hover { transform: none; box-shadow: 0 4px 10px rgba(0,0,0,.6); }
+    .card.picked:hover { transform: translateY(-22px); }
+    .unit.ready:hover, .unit.targetable:hover { transform: none; }
+  }
+
+  /* スマホ よこ画面：高さが 足りないので おしらせを出す */
+  #rotate-tip {
+    display: none;
+    text-align: center;
+    font-family: var(--font-dot);
+    font-size: 11px; letter-spacing: 1px;
+    color: var(--gold);
+    background: rgba(242,193,78,.12);
+    border: 1px solid rgba(242,193,78,.45);
+    border-radius: 6px;
+    padding: 5px 8px;
+    margin-bottom: 2px;
+  }
+  #rotate-tip button {
+    font: inherit; color: var(--dim);
+    background: none; border: none; cursor: pointer;
+    margin-left: 8px; text-decoration: underline;
+  }
+  @media (orientation: landscape) and (max-height: 520px) {
+    #rotate-tip:not(.closed) { display: block; }
+  }
+
+</style>
+
+<div id="screen">
+
+  <div id="rotate-tip">📱 たて画面の方が 遊びやすいよ<button id="tip-close">とじる</button></div>
+
+  <!-- 敵リーダー -->
+  <div class="win leader-row enemy-side">
+    <div class="leader-portrait" id="enemy-leader">👹</div>
+    <div class="leader-info">
+      <div class="leader-name">まおう</div>
+      <div class="stat-bar">
+        <span class="badge hp">HP <span id="enemy-hp">20</span></span>
+        <span class="badge mp">MP <span id="enemy-mp">0</span>/<span id="enemy-maxmp">0</span></span>
+        <span class="badge deck">やまふだ <span id="enemy-deck">40</span></span>
+        <span class="badge guard" id="enemy-guard" hidden>🛡 まもられている</span>
+      </div>
+    </div>
+    <div class="enemy-hand" id="enemy-hand"></div>
+  </div>
+
+  <!-- 盤面 -->
+  <div class="board">
+    <div class="row" id="enemy-back"><span class="row-tag">こうれつ</span></div>
+    <div class="row" id="enemy-front"><span class="row-tag">ぜんれつ</span></div>
+
+    <div class="center-bar">
+      <div class="win" id="log"></div>
+      <button class="btn" id="turn-btn">ターンおわり</button>
+    </div>
+
+    <div class="row" id="player-front"><span class="row-tag">ぜんれつ</span></div>
+    <div class="row" id="player-back"><span class="row-tag">こうれつ</span></div>
+  </div>
+
+  <!-- 自リーダー -->
+  <div class="win leader-row player-side">
+    <div class="leader-portrait" id="player-leader">🗡️</div>
+    <div class="leader-info">
+      <div class="leader-name">ゆうしゃ</div>
+      <div class="stat-bar">
+        <span class="badge hp">HP <span id="player-hp">20</span></span>
+        <span class="badge mp">MP <span id="player-mp">0</span>/<span id="player-maxmp">0</span></span>
+        <div class="mp-pips" id="mp-pips"></div>
+        <span class="badge deck">やまふだ <span id="player-deck">40</span></span>
+        <span class="badge guard" id="player-guard" hidden>🛡 まもられている</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="hint" id="hint"></div>
+  <div class="hand-area" id="player-hand"></div>
+
+  <div class="foot">
+    <button id="rules-btn">ルールを見る</button>
+    <button id="restart-btn">さいしょから</button>
+    <button id="surrender-btn" class="quiet">こうさん</button>
+  </div>
+</div>
+
+<div id="fx"></div>
+
+<div id="overlay">
+  <div class="modal">
+    <h1 id="modal-title">グリフォン</h1>
+    <div class="sub" id="modal-sub">GRID FORMATION</div>
+    <div class="rules" id="modal-rules"></div>
+    <button class="btn" id="modal-btn">たたかう</button>
+    <div class="modal-note" id="modal-note"></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* スマホで 実寸表示させる（<head> を 用意できない場所でも きくように） */
+(function ensureViewport() {
+  if (document.querySelector('meta[name="viewport"]')) return;
+  const m = document.createElement("meta");
+  m.name = "viewport";
+  m.content = "width=device-width, initial-scale=1, viewport-fit=cover";
+  (document.head || document.documentElement).appendChild(m);
+})();
+
+/* =========================================================
+   カード定義
+   ========================================================= */
+const CARDS = [
+  // --- ユニット（10種 / 20枚）---
+  { id:"slime", name:"スライム", cost:0, type:"unit", atk:1, hp:1, count:2, emoji:"🟦", text:"" },
+  { id:"rabbit", name:"ダッシュうさぎ", cost:1, type:"unit", atk:1, hp:1, count:2, emoji:"🐇", text:"召喚したターンから攻撃できる",
+    rush:true },
+  { id:"goblin", name:"ゴブリン", cost:1, type:"unit", atk:1, hp:1, count:2, emoji:"👺", text:"召喚時：デッキからユニットを1枚手札に加える",
+    effect:{ kind:"search", value:1, target:"self", filter:"unit" } },
+  { id:"wolf", name:"あばれウルフ", cost:2, type:"unit", atk:3, hp:1, count:2, emoji:"🐺", text:"" },
+  { id:"ghost", name:"ゴースト", cost:2, type:"unit", atk:1, hp:2, count:2, emoji:"👻", text:"死亡時：デッキからユニットを1枚手札に加える",
+    effect:{ kind:"search", value:1, target:"self", filter:"unit", when:"death" } },
+  { id:"vampbat", name:"吸血コウモリ", cost:2, type:"unit", atk:1, hp:3, count:2, emoji:"🦇", text:"攻撃で与えたダメージ分、自分のHPを回復",
+    lifesteal:true },
+  { id:"archer", name:"アーチャーエルフ", cost:3, type:"unit", atk:3, hp:1, count:2, emoji:"🏹", text:"召喚時：縦1列に1ダメージ",
+    effect:{ kind:"damage", value:1, target:"enemyLane" } },
+  { id:"healslime", name:"ヒールスライム", cost:3, type:"unit", atk:1, hp:4, count:2, emoji:"🟩", text:"召喚時：味方1体を2回復",
+    effect:{ kind:"heal", value:2, target:"allyUnit" } },
+  { id:"golem", name:"ゴーレム", cost:5, type:"unit", atk:3, hp:7, count:2, emoji:"🗿", text:"" },
+  { id:"dragon", name:"ドラゴン", cost:6, type:"unit", atk:4, hp:6, count:2, emoji:"🐉", text:"召喚時：縦一列に2ダメージ",
+    effect:{ kind:"damage", value:2, target:"enemyLane" } },
+
+  // --- 特技（10種 / 20枚）---
+  { id:"water", name:"聖水", cost:0, type:"spell", count:2, emoji:"💧", text:"MPを1回復",
+    effect:{ kind:"mp", value:1, target:"self", fx:"blueGlow" } },
+  { id:"flare", name:"フレア", cost:1, type:"spell", count:2, emoji:"🔥", text:"敵1体に2ダメージ",
+    effect:{ kind:"damage", value:2, target:"enemyAny", fx:"flare" } },
+  { id:"search", name:"探索", cost:1, type:"spell", count:2, emoji:"🔍", text:"デッキの上から2枚引く",
+    effect:{ kind:"draw", value:2, target:"self" } },
+  { id:"heal", name:"ヒール", cost:2, type:"spell", count:2, emoji:"✨", text:"味方1体を3回復",
+    effect:{ kind:"heal", value:3, target:"allyAny" } },
+  { id:"song", name:"ゆうきの歌", cost:2, type:"spell", count:2, emoji:"🎵", text:"味方全体を +1/+1",
+    effect:{ kind:"buff", value:1, target:"allyAll", fx:"fieldGlow" } },
+  { id:"horn", name:"角笛", cost:2, type:"spell", count:2, emoji:"📯", text:"デッキからコスト2以下のユニットを2枚手札に加える",
+    effect:{ kind:"search", value:2, target:"self", filter:"unit", maxCost:2 } },
+  { id:"hail", name:"ヘイル", cost:2, type:"spell", count:2, emoji:"❄️", text:"敵1体に1ダメージ、対象は次のターン攻撃できない",
+    effect:{ kind:"freeze", value:1, target:"enemyUnit" } },
+  { id:"slash", name:"スラッシュ", cost:2, type:"spell", count:2, emoji:"⚔️", text:"横1列に1ダメージ",
+    effect:{ kind:"damage", value:1, target:"enemyRow" } },
+  { id:"thunder", name:"サンダー", cost:3, type:"spell", count:2, emoji:"⚡", text:"縦1列に2ダメージ",
+    effect:{ kind:"damage", value:2, target:"enemyLane", fx:"bolt" } },
+  { id:"storm", name:"ストーム", cost:4, type:"spell", count:2, emoji:"🌪️", text:"敵全体に2ダメージ",
+    effect:{ kind:"damage", value:2, target:"enemyAll", fx:"storm" } },
+];
+
+const CARD_MAP = {};
+CARDS.forEach(c => CARD_MAP[c.id] = c);
+
+const MAX_SLOTS = 3;
+const START_HP  = 20;
+const MAX_MP    = 10;
+const HAND_MAX  = 8;
+const CLEANUP_DELAY = 420;   // やられた演出を見せる時間
+
+let G = null;
+let uidCounter = 0;
+
+/* =========================================================
+   セットアップ
+   ========================================================= */
+function makeDeck() {
+  const deck = [];
+  CARDS.forEach(c => { for (let i = 0; i < (c.count || 2); i++) deck.push(c.id); });
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  return deck;
+}
+
+function makeSide(isPlayer) {
+  return {
+    isPlayer, hp: START_HP, mp: 0, maxMp: 0,
+    deck: makeDeck(), hand: [],
+    front: [null, null, null],
+    back:  [null, null, null],
+    fatigue: 0,
+  };
+}
+
+function newGame() {
+  G = {
+    player: makeSide(true),
+    enemy:  makeSide(false),
+    turn: "player", turnCount: 0, over: false,
+    mode: "idle",            // idle / place / target / attack
+    pickedCard: null,        // 手札 index
+    pickedUnit: null,        // 攻撃元
+    pending: null,           // 効果の対象待ち
+    logs: [], busy: false,
+    cleanupTimer: null,
+  };
+  uidCounter = 0;
+  document.getElementById("fx").innerHTML = "";
+
+  for (let i = 0; i < 3; i++) draw(G.player);
+  for (let i = 0; i < 4; i++) draw(G.enemy);
+
+  log("たたかいが はじまった！");
+  startTurn("player");
+}
+
+/* =========================================================
+   基本
+   ========================================================= */
+function draw(side) {
+  if (side.deck.length === 0) {
+    side.fatigue++;
+    side.hp -= side.fatigue;
+    log(`${sideName(side)}は やまふだが つきて ${side.fatigue}ダメージ！`);
+    checkGameOver();
+    return;
+  }
+  const id = side.deck.pop();
+  if (side.hand.length >= HAND_MAX) {
+    log(`てふだが あふれて「${CARD_MAP[id].name}」は きえた…`);
+    return;
+  }
+  side.hand.push(id);
+}
+
+function sideName(side) { return side.isPlayer ? "ゆうしゃ" : "まおう"; }
+/** ユニットの持ち主（"player"/"enemy" の印から 引き当てる） */
+function sideOf(unit) { return unit.side === "player" ? G.player : G.enemy; }
+function opponentOf(side) { return side.isPlayer ? G.enemy : G.player; }
+function isLeader(t) { return t === G.player || t === G.enemy; }
+
+function log(msg) {
+  G.logs.unshift(msg);
+  if (G.logs.length > 40) G.logs.pop();
+  renderLog();
+}
+
+/** 生きているユニットだけ返す（やられた演出中のものは除外） */
+function allUnits(side) {
+  return [...side.front, ...side.back].filter(u => u && u.hp > 0);
+}
+
+/* =========================================================
+   ターン進行
+   ========================================================= */
+function startTurn(who) {
+  G.turn = who;
+  G.turnCount++;
+  const side = who === "player" ? G.player : G.enemy;
+
+  side.maxMp = Math.min(MAX_MP, side.maxMp + 1);
+  side.mp = side.maxMp;
+  allUnits(side).forEach(u => {
+    u.sick = false;
+    u.attacked = false;
+    if (u.frozen) {                       // こおりは 自分のターンが 来るたびに 1へる
+      u.frozen--;
+      if (u.frozen <= 0) { delete u.frozen; log(`${u.name}の こおりが とけた`); }
+    }
+  });
+  draw(side);
+  if (G.over) return;
+
+  log(`━ ${sideName(side)}の ターン ━`);
+  clearPick();
+
+  if (who === "enemy") {
+    G.busy = true;
+    render();
+    setTimeout(aiStep, 800);
+  } else {
+    G.busy = false;
+    render();
+  }
+}
+
+function endTurn() {
+  if (G.over || G.busy) return;
+  clearPick();
+  startTurn(G.turn === "player" ? "enemy" : "player");
+}
+
+/* =========================================================
+   カードをプレイできるか
+   ========================================================= */
+function hasFreeSlot(side) {
+  return side.front.includes(null) || side.back.includes(null);
+}
+
+function canPlay(side, cardId) {
+  const c = CARD_MAP[cardId];
+  if (side.mp < c.cost) return false;
+  if (c.type === "unit") return hasFreeSlot(side);
+
+  const e = c.effect;
+  if ((e.target === "enemyUnit" || e.target === "enemyAll") && allUnits(opponentOf(side)).length === 0) return false;
+  if ((e.target === "allyUnit"  || e.target === "allyAll")  && allUnits(side).length === 0) return false;
+  if (e.target === "enemyLane" && candidateLanes(side).length === 0) return false;
+  if (e.target === "enemyRow"  && candidateRows(side).length === 0) return false;
+  return true;
+}
+
+/** たて一列の効果が ねらえるレーン（敵がいるレーンだけ） */
+function candidateLanes(side) {
+  const foe = opponentOf(side);
+  const lanes = [];
+  for (let i = 0; i < MAX_SLOTS; i++) if (laneOccupied(foe, i)) lanes.push(i);
+  return lanes;
+}
+
+function laneUnits(side, i) {
+  return [side.front[i], side.back[i]].filter(u => u && u.hp > 0);
+}
+
+/** ユニットが 盤面のどこにいるか */
+function unitLocation(unit) {
+  for (const side of [G.player, G.enemy]) {
+    for (const row of ["front", "back"]) {
+      const idx = side[row].indexOf(unit);
+      if (idx >= 0) return { side, row, idx };
+    }
+  }
+  return null;
+}
+
+function summon(side, cardId, row, idx) {
+  const c = CARD_MAP[cardId];
+  const unit = {
+    uid: ++uidCounter,
+    id: c.id, name: c.name, emoji: c.emoji,
+    atk: c.atk, hp: c.hp, maxHp: c.hp,
+    sick: !c.rush,                    // rush なら 召喚した ターンから 攻撃できる
+    attacked: false, side: side.isPlayer ? "player" : "enemy",
+    lifesteal: !!c.lifesteal,
+  };
+  side[row][idx] = unit;
+  log(`${sideName(side)}は「${c.name}」を ${row === "front" ? "ぜんれつ" : "こうれつ"}に よびだした！`);
+  return unit;
+}
+
+/* =========================================================
+   効果とダメージ
+   ========================================================= */
+function applyEffect(effect, targets, caster) {
+  const side = caster || G.player;
+  if (effect.fx) playFx(effect, side, targets[0], null);
+
+  // 対象をとらない効果
+  if (effect.kind === "mp") {
+    const before = side.mp;
+    side.mp += effect.value;          // そのターンだけ 上限を こえられる
+    log(`MPが ${side.mp - before} かいふくした`);
+    floatNum(side, `MP+${side.mp - before}`, "buff");
+    render();
+    return;
+  }
+  if (effect.kind === "draw") {
+    for (let i = 0; i < effect.value; i++) draw(side);
+    log(`カードを ${effect.value}枚 ひいた`);
+    scheduleCleanup();
+    return;
+  }
+  if (effect.kind === "search") {
+    searchDeck(side, effect);
+    scheduleCleanup();
+    return;
+  }
+
+  targets.forEach(t => {
+    if (effect.kind === "damage")    dealDamage(t, effect.value);
+    else if (effect.kind === "freeze") {
+      if (effect.value > 0) dealDamage(t, effect.value);
+      if (t.hp > 0) {
+        t.frozen = 2;                 // 自分の次のターンが 終わるまで 攻撃できない
+        floatNum(t, "こおった！", "freeze");
+        log(`${t.name}は こおりついた！`);
+      }
+    }
+    else if (effect.kind === "heal") healTarget(t, effect.value);
+    else if (effect.kind === "buff") {
+      t.atk += effect.value;
+      t.hp += effect.value;
+      t.maxHp += effect.value;
+      floatNum(t, `+${effect.value}/+${effect.value}`, "buff");
+    }
+    else if (effect.kind === "buffAtk") {
+      t.atk += effect.value;
+      floatNum(t, `攻+${effect.value}`, "buff");
+    }
+  });
+  scheduleCleanup();
+}
+
+/** デッキから 条件に合うカードを 手札に加える */
+function searchDeck(side, effect) {
+  let found = 0;
+  for (let i = 0; i < effect.value; i++) {
+    const at = side.deck.findIndex(id => {
+      const c = CARD_MAP[id];
+      if (effect.filter === "unit"  && c.type !== "unit")  return false;
+      if (effect.filter === "spell" && c.type !== "spell") return false;
+      if (effect.maxCost !== undefined && c.cost > effect.maxCost) return false;
+      return true;
+    });
+    if (at < 0) break;
+    const [id] = side.deck.splice(at, 1);
+    if (side.hand.length < HAND_MAX) { side.hand.push(id); found++; }
+    else log(`手札が いっぱいで「${CARD_MAP[id].name}」は もえてしまった…`);
+  }
+  if (found > 0) log(`デッキから ${found}枚 手札に くわえた！`);
+  else log("デッキに 条件に合う カードが なかった…");
+}
+
+/** よこ一列（ぜんれつ or こうれつ）に はたらく効果 */
+function applyRowEffect(effect, foe, row) {
+  playFx(effect, opponentOf(foe), null, null);
+  const inner = Object.assign({}, effect);
+  delete inner.fx;
+  const targets = foe[row].filter(u => u && u.hp > 0);
+  log(`${row === "front" ? "ぜんれつ" : "こうれつ"}を なぎはらった！`);
+  applyEffect(inner, targets, opponentOf(foe));
+}
+
+/** よこ一列の効果が ねらえる列（敵がいる列だけ） */
+function candidateRows(side) {
+  const foe = opponentOf(side);
+  const rows = [];
+  for (const row of ["front", "back"]) {
+    if (foe[row].some(u => u && u.hp > 0)) rows.push(row);
+  }
+  return rows;
+}
+
+/** たて一列に はたらく効果 */
+function applyLaneEffect(effect, foe, lane) {
+  playFx(effect, opponentOf(foe), null, lane);
+
+  if (effect.kind === "swap") {
+    const f = foe.front[lane], b = foe.back[lane];
+    foe.front[lane] = b;
+    foe.back[lane]  = f;
+    log(`${lane + 1}れつ目の 前後が 入れかわった！`);
+    render();
+    scheduleCleanup();
+    return;
+  }
+  const inner = Object.assign({}, effect);
+  delete inner.fx;                                 // エフェクトは もう再生ずみ
+  applyEffect(inner, laneUnits(foe, lane), opponentOf(foe));
+}
+
+function dealDamage(target, amount) {
+  if (isLeader(target)) {
+    target.hp -= amount;
+    floatNum(target, `${amount}`, "dmg");
+    shakeEl(leaderEl(target));
+  } else {
+    target.hp -= amount;
+    floatNum(target, `${amount}`, "dmg");
+    shakeEl(unitEl(target));
+  }
+}
+
+function healTarget(target, amount) {
+  const cap = isLeader(target) ? START_HP : target.maxHp;
+  const before = target.hp;
+  target.hp = Math.min(cap, target.hp + amount);
+  fxHeal(target);                                  // 回復は いつでも 緑のキラキラ
+  floatNum(target, `+${target.hp - before}`, "heal");
+}
+
+/** やられたユニットを少し遅れて盤面から消す（演出のため） */
+function scheduleCleanup() {
+  render();
+  const dying = [];
+  [G.player, G.enemy].forEach(side => {
+    ["front", "back"].forEach(row => {
+      side[row].forEach(u => { if (u && u.hp <= 0) dying.push(u); });
+    });
+  });
+  dying.forEach(u => {
+    if (u.logged) return;
+    u.logged = true;
+    log(`「${u.name}」は たおれた…`);
+
+    // 死亡時：〜 の効果を ここで 発動する
+    const card = CARD_MAP[u.id];
+    const de = card && card.effect;
+    if (de && de.when === "death") {
+      log(`「${u.name}」の 死亡時こうかが はつどうした！`);
+      const owner = sideOf(u);
+      if (de.kind === "search" || de.kind === "draw" || de.kind === "mp") {
+        applyEffect(Object.assign({}, de), [], owner);
+      } else if (de.target === "enemyAll") {
+        applyEffect(Object.assign({}, de), allUnits(opponentOf(owner)), owner);
+      } else if (de.target === "allyAll") {
+        applyEffect(Object.assign({}, de), allUnits(owner), owner);
+      }
+      // 対象を選ぶタイプの死亡時効果は、いまは 未対応（必要になったら 実装する）
+    }
+  });
+  checkGameOver();   // ← 死亡処理待ちでも 勝敗判定は必ず通す
+
+  if (dying.length === 0 || G.cleanupTimer) return;
+  G.cleanupTimer = setTimeout(() => {
+    G.cleanupTimer = null;
+    [G.player, G.enemy].forEach(side => {
+      ["front", "back"].forEach(row => {
+        side[row].forEach((u, i) => { if (u && u.hp <= 0) side[row][i] = null; });
+      });
+    });
+    render();
+  }, CLEANUP_DELAY);
+}
+
+function checkGameOver() {
+  if (G.over) return;
+  if (G.player.hp <= 0 && G.enemy.hp <= 0) finish("draw");
+  else if (G.enemy.hp <= 0)  finish("win");
+  else if (G.player.hp <= 0) finish("lose");
+}
+
+function finish(result) {
+  G.over = true;
+  G.busy = true;
+  setTimeout(() => {
+    const t = document.getElementById("modal-title");
+    const s = document.getElementById("modal-sub");
+    const r = document.getElementById("modal-rules");
+    const n = document.getElementById("modal-note");
+    if (result === "win")  { t.textContent = "しょうり！"; s.textContent = "まおうを たおした"; }
+    if (result === "lose") { t.textContent = "ぜんめつ…";  s.textContent = "ゆうしゃは たおれた"; }
+    if (result === "draw") { t.textContent = "ひきわけ";    s.textContent = "おたがい たおれた"; }
+    r.innerHTML = "";
+    n.textContent = result === "lose"
+      ? "ヒント：3レーンすべてを 埋めると リーダーを ねらわれなくなるよ。"
+      : `${G.turnCount}ターンの たたかいだった。`;
+    document.getElementById("modal-btn").textContent = "もういちど";
+    document.getElementById("overlay").classList.add("show");
+  }, 900);
+}
+
+/* =========================================================
+   攻撃ルール
+   ① 前列のユニットは いつでも狙える
+   ② 後列のユニットは、同じレーン（たて）の前列が空いているときだけ狙える
+   ③ 左・中央・右の 3レーンすべてに ユニットがいると リーダーブロック成立
+      （前列でも後列でもよい）。特技は このブロックを無視する
+   ========================================================= */
+function laneOccupied(side, i) {
+  const f = side.front[i], b = side.back[i];
+  return (f && f.hp > 0) || (b && b.hp > 0);
+}
+
+/** リーダーが まもられているか（3レーンすべてが埋まっている） */
+function leaderBlocked(side) {
+  for (let i = 0; i < MAX_SLOTS; i++) if (!laneOccupied(side, i)) return false;
+  return true;
+}
+
+/** そのユニットが 前列のなかまに かばわれているか */
+function isCovered(side, row, i) {
+  if (row !== "back") return false;
+  const f = side.front[i];
+  return !!(f && f.hp > 0);
+}
+
+function legalAttackTargets(attackerSide) {
+  const foe = opponentOf(attackerSide);
+  const targets = [];
+  for (let i = 0; i < MAX_SLOTS; i++) {
+    const f = foe.front[i], b = foe.back[i];
+    if (f && f.hp > 0) targets.push(f);
+    else if (b && b.hp > 0) targets.push(b);   // 前が空いているレーンだけ後列を狙える
+  }
+  if (!leaderBlocked(foe)) targets.push(foe);
+  return targets;
+}
+
+function canAttack(unit) {
+  return unit.hp > 0 && !unit.sick && !unit.attacked && !unit.frozen && unit.atk > 0;
+}
+
+function doAttack(attacker, target) {
+  attacker.attacked = true;
+  const dealt = Math.min(attacker.atk, Math.max(0, target.hp));   // 実際に あたえたダメージ
+
+  if (isLeader(target)) {
+    log(`「${attacker.name}」の こうげき！ ${sideName(target)}に ${attacker.atk}ダメージ`);
+    dealDamage(target, attacker.atk);
+  } else {
+    log(`「${attacker.name}」が 「${target.name}」に こうげき！`);
+    dealDamage(target, attacker.atk);
+    if (target.atk > 0) dealDamage(attacker, target.atk);   // はんげき
+  }
+
+  // 吸血：はんげきのあと、生きていれば あたえたダメージ分 回復
+  if (attacker.lifesteal && dealt > 0 && attacker.hp > 0) {
+    const before = attacker.hp;
+    healTarget(attacker, dealt);
+    if (attacker.hp > before) log(`「${attacker.name}」は ${attacker.hp - before} かいふくした！`);
+  }
+  scheduleCleanup();
+}
+
+/* =========================================================
+   プレイヤー操作
+   ========================================================= */
+function clearPick() {
+  G.mode = "idle";
+  G.pickedCard = null;
+  G.pickedUnit = null;
+  G.pending = null;
+  render();
+}
+
+function myTurn() { return G && !G.busy && !G.over && G.turn === "player"; }
+
+function effectCandidates(effect, side) {
+  const foe = opponentOf(side);
+  switch (effect.target) {
+    case "enemyUnit": return allUnits(foe);
+    case "enemyAny":  return [...allUnits(foe), foe];   // リーダーも ねらえる
+    case "enemyAll":  return allUnits(foe);
+    case "allyUnit":  return allUnits(side);
+    case "allyAll":   return allUnits(side);
+    case "allyAny":   return [...allUnits(side), side];
+    default: return [];
+  }
+}
+
+function onCardClick(idx) {
+  if (!myTurn()) return;
+  const cardId = G.player.hand[idx];
+  if (!canPlay(G.player, cardId)) return;
+  if (G.pickedCard === idx) { clearPick(); return; }
+
+  const c = CARD_MAP[cardId];
+  G.pickedUnit = null;
+  G.pickedCard = idx;
+
+  if (c.type === "unit") {
+    G.mode = "place";
+  } else {
+    const e = c.effect;
+    if (needsNoTarget(e)) { castSpell(idx, null); return; }
+    G.mode = "target";
+    G.pending = {
+      effect: e, fromHand: true,
+      lane: e.target === "enemyLane",
+      row:  e.target === "enemyRow",
+    };
+  }
+  render();
+}
+
+/** 対象を えらばなくていい効果か */
+function needsNoTarget(e) {
+  return e.target === "enemyAll" || e.target === "allyAll" || e.target === "self";
+}
+
+function onSlotClick(row, idx) {
+  if (!myTurn() || G.mode !== "place") return;
+  if (G.player[row][idx]) return;
+
+  const handIdx = G.pickedCard;
+  const cardId = G.player.hand[handIdx];
+  const c = CARD_MAP[cardId];
+
+  G.player.mp -= c.cost;
+  G.player.hand.splice(handIdx, 1);
+  const unit = summon(G.player, cardId, row, idx);
+
+  G.pickedCard = null;
+  G.mode = "idle";
+
+  if (c.effect) {
+    const e = c.effect;
+    if (e.target === "enemyAll")     { applyEffect(e, allUnits(G.enemy), G.player); render(); return; }
+    if (e.target === "allyAll")      { applyEffect(e, allUnits(G.player), G.player); render(); return; }
+    if (e.target === "self")         { applyEffect(e, [], G.player); render(); return; }
+    if (e.target === "enemyLane") {
+      if (candidateLanes(G.player).length > 0) {
+        G.mode = "target";
+        G.pending = { effect: e, fromHand: false, source: unit, lane: true };
+      }
+    } else if (e.target === "enemyRow") {
+      if (candidateRows(G.player).length > 0) {
+        G.mode = "target";
+        G.pending = { effect: e, fromHand: false, source: unit, row: true };
+      }
+    } else if (effectCandidates(e, G.player).length > 0) {
+      G.mode = "target";
+      G.pending = { effect: e, fromHand: false, source: unit };
+    }
+  }
+  render();
+}
+
+function castSpell(handIdx, target) {
+  const cardId = G.player.hand[handIdx];
+  const c = CARD_MAP[cardId];
+  G.player.mp -= c.cost;
+  G.player.hand.splice(handIdx, 1);
+  log(`ゆうしゃは「${c.name}」を となえた！`);
+
+  const e = c.effect;
+  if (e.target === "enemyLane")     applyLaneEffect(e, G.enemy, target);
+  else if (e.target === "enemyRow") applyRowEffect(e, G.enemy, target);
+  else if (e.target === "enemyAll") applyEffect(e, allUnits(G.enemy), G.player);
+  else if (e.target === "allyAll")  applyEffect(e, allUnits(G.player), G.player);
+  else if (e.target === "self")     applyEffect(e, [], G.player);
+  else                              applyEffect(e, [target], G.player);
+  clearPick();
+}
+
+/** たて一列を えらんだとき */
+function onLaneClick(lane) {
+  if (!myTurn() || G.mode !== "target" || !G.pending || !G.pending.lane) return;
+  if (!candidateLanes(G.player).includes(lane)) return;
+
+  if (G.pending.fromHand) castSpell(G.pickedCard, lane);
+  else { applyLaneEffect(G.pending.effect, G.enemy, lane); clearPick(); }
+}
+
+/** よこ一列を えらんだとき */
+function onRowClick(row) {
+  if (!myTurn() || G.mode !== "target" || !G.pending || !G.pending.row) return;
+  if (!candidateRows(G.player).includes(row)) return;
+
+  if (G.pending.fromHand) castSpell(G.pickedCard, row);
+  else { applyRowEffect(G.pending.effect, G.enemy, row); clearPick(); }
+}
+
+function onTargetClick(target) {
+  if (!myTurn()) return;
+
+  if (G.mode === "attack" && G.pickedUnit) {
+    if (!legalAttackTargets(G.player).includes(target)) return;
+    doAttack(G.pickedUnit, target);
+    clearPick();
+    return;
+  }
+  if (G.mode === "target" && G.pending) {
+    if (G.pending.lane) return;   // レーン選択は onLaneClick で処理
+    if (!effectCandidates(G.pending.effect, G.player).includes(target)) return;
+    if (G.pending.fromHand) castSpell(G.pickedCard, target);
+    else { applyEffect(G.pending.effect, [target], G.player); clearPick(); }
+  }
+}
+
+function onLeaderClick(side) {
+  if (!myTurn()) return;
+  onTargetClick(side);
+}
+
+function onUnitClick(unit) {
+  if (!myTurn() || unit.hp <= 0) return;
+  const mine = sideOf(unit) === G.player;
+
+  // レーンを選ぶ効果のときは、敵ユニットのクリックも レーン選択として扱う
+  if (G.mode === "target" && G.pending && G.pending.lane) {
+    if (mine) return;
+    const loc = unitLocation(unit);
+    if (loc) onLaneClick(loc.idx);
+    return;
+  }
+
+  // よこ一列を選ぶ効果のときは、クリックした敵ユニットの 列を えらぶ
+  if (G.mode === "target" && G.pending && G.pending.row) {
+    if (mine) return;
+    const loc = unitLocation(unit);
+    if (loc) onRowClick(loc.row);
+    return;
+  }
+
+  if (mine && G.mode !== "target") {
+    if (G.pickedUnit === unit) { clearPick(); return; }
+    if (!canAttack(unit)) return;
+    if (legalAttackTargets(G.player).length === 0) return;
+    G.pickedUnit = unit;
+    G.pickedCard = null;
+    G.mode = "attack";
+    render();
+    return;
+  }
+  onTargetClick(unit);
+}
+
+/* =========================================================
+   CPU
+   ========================================================= */
+function aiStep() {
+  if (G.over) { G.busy = false; return; }
+  const E = G.enemy;
+
+  // 1. カードを出す（MPを使い切る方向で）
+  const playable = E.hand
+    .map((id, i) => ({ id, i, c: CARD_MAP[id] }))
+    .filter(x => canPlay(E, x.id) && aiIsWorthPlaying(E, x.c))
+    .sort((a, b) => b.c.cost - a.c.cost);
+
+  if (playable.length > 0) {
+    aiPlayCard(aiChooseCard(playable));
+    render();
+    setTimeout(aiStep, 780);
+    return;
+  }
+
+  // 2. 攻撃する
+  const attacker = allUnits(E).find(u => canAttack(u));
+  if (attacker) {
+    const target = aiChooseAttackTarget(attacker);
+    if (target) {
+      doAttack(attacker, target);
+      setTimeout(aiStep, 780);
+    } else {
+      attacker.attacked = true;
+      setTimeout(aiStep, 60);
+    }
+    return;
+  }
+
+  // 3. ターンを渡す
+  setTimeout(() => { if (!G.over) startTurn("player"); else G.busy = false; }, 550);
+}
+
+/** ムダ打ちを避ける（満タンなのに回復、など） */
+function aiIsWorthPlaying(E, c) {
+  if (c.type !== "spell") return true;
+  const e = c.effect;
+  if (e.kind === "heal") {
+    const hurtAlly = allUnits(E).some(u => u.hp < u.maxHp);
+    const hurtLeader = E.hp <= START_HP - e.value;
+    return hurtAlly || (e.target === "allyAny" && hurtLeader);
+  }
+  if (e.kind === "buff")    return allUnits(E).length >= 2;        // 1体だけなら温存
+  if (e.kind === "buffAtk") return allUnits(E).some(u => !u.sick); // すぐ殴れる子がいるとき
+  if (e.kind === "draw")    return E.hand.length + e.value - 1 <= HAND_MAX;
+  if (e.kind === "swap")    return aiChooseLane(e) !== null;
+  if (e.kind === "search") {
+    if (E.hand.length + e.value - 1 > HAND_MAX) return false;
+    return E.deck.some(id => {                        // 撃つ前に タマがあるか 確かめる
+      const t = CARD_MAP[id];
+      if (e.filter === "unit"  && t.type !== "unit")  return false;
+      if (e.filter === "spell" && t.type !== "spell") return false;
+      if (e.maxCost !== undefined && t.cost > e.maxCost) return false;
+      return true;
+    });
+  }
+  // こおらせるのは これから殴ってきそうな相手がいるときだけ
+  if (e.kind === "freeze")  return allUnits(G.player).some(u => u.atk > 0 && !u.frozen);
+  return true;
+}
+
+/** たて一列の効果で どのレーンを ねらうか */
+function aiChooseLane(effect) {
+  const P = G.player;
+  const lanes = candidateLanes(G.enemy);
+  if (!lanes.length) return null;
+
+  if (effect.kind === "swap") {
+    // 前列に壁、後列に本命がいるレーンを 入れ替えて 本命を引きずり出す
+    const good = lanes.filter(i => P.front[i] && P.front[i].hp > 0 && P.back[i] && P.back[i].hp > 0);
+    if (!good.length) return null;
+    return good.sort((a, b) => P.back[a].hp - P.back[b].hp)[0];
+  }
+  // ダメージ：一番おいしいレーン
+  const score = (i) => laneUnits(P, i).reduce((s, u) =>
+    s + Math.min(u.hp, effect.value) + (u.hp <= effect.value ? 3 + u.atk : 0), 0);
+  return lanes.slice().sort((a, b) => score(b) - score(a))[0];
+}
+
+/** よこ一列の効果で ぜんれつ／こうれつ どちらを ねらうか */
+function aiChooseRow(effect) {
+  const P = G.player;
+  const rows = candidateRows(G.enemy);
+  if (!rows.length) return null;
+  const score = (row) => P[row].filter(u => u && u.hp > 0).reduce((s, u) =>
+    s + Math.min(u.hp, effect.value) + (u.hp <= effect.value ? 3 + u.atk : 0), 0);
+  return rows.slice().sort((a, b) => score(b) - score(a))[0];
+}
+
+function aiChooseCard(playable) {
+  const foes = allUnits(G.player);
+
+  // まとめて倒せるなら全体攻撃
+  const storm = playable.find(x => x.c.effect && x.c.effect.target === "enemyAll");
+  if (storm && foes.filter(u => u.hp <= storm.c.effect.value).length >= 2) return storm;
+
+  // たて一列で2体まとめて倒せるなら それ
+  for (const x of playable) {
+    const e = x.c.effect;
+    if (e && e.kind === "damage" && e.target === "enemyLane") {
+      const lane = aiChooseLane(e);
+      if (lane !== null && laneUnits(G.player, lane).filter(u => u.hp <= e.value).length >= 2) return x;
+    }
+  }
+
+  // 確実に除去できる呪文があれば使う
+  for (const x of playable) {
+    const e = x.c.effect;
+    if (x.c.type === "spell" && e && e.kind === "damage" && e.target === "enemyUnit") {
+      if (foes.some(u => u.hp <= e.value && u.atk >= 3)) return x;
+    }
+  }
+  return playable[0];   // 一番コストが高いもの
+}
+
+function aiPlayCard(pick) {
+  const E = G.enemy;
+  const c = pick.c;
+  E.mp -= c.cost;
+  E.hand.splice(pick.i, 1);
+
+  const resolve = (e) => {
+    if (e.target === "enemyLane") {
+      const lane = aiChooseLane(e);
+      if (lane !== null) applyLaneEffect(e, G.player, lane);
+    }
+    else if (e.target === "enemyRow") {
+      const row = aiChooseRow(e);
+      if (row !== null) applyRowEffect(e, G.player, row);
+    }
+    else if (e.target === "enemyAll") applyEffect(e, allUnits(G.player), E);
+    else if (e.target === "allyAll")  applyEffect(e, allUnits(E), E);
+    else if (e.target === "self")     applyEffect(e, [], E);
+    else {
+      const t = aiChooseEffectTarget(e);
+      if (t) applyEffect(e, [t], E);
+    }
+  };
+
+  if (c.type === "unit") {
+    const spot = aiPlaceUnit(E, c);
+    summon(E, c.id, spot.row, spot.idx);
+    if (c.effect) resolve(c.effect);
+  } else {
+    log(`まおうは「${c.name}」を となえた！`);
+    resolve(c.effect);
+  }
+}
+
+/** どこに置くか：空きレーンを埋めてリーダーを守る＞脆い子は かばわれる後列へ */
+function aiPlaceUnit(E, c) {
+  const tanky = c.hp >= 4 || c.hp > c.atk;
+  let best = null, bestScore = -Infinity;
+
+  for (const row of ["front", "back"]) {
+    for (let i = 0; i < MAX_SLOTS; i++) {
+      if (E[row][i]) continue;
+      const laneEmpty = !laneOccupied(E, i);
+      const frontHere = !!(E.front[i] && E.front[i].hp > 0);
+      const backHere  = !!(E.back[i]  && E.back[i].hp  > 0);
+
+      let s;
+      if (row === "back") {
+        s = frontHere ? 8 : 2;          // かばわれる後列は おいしい
+        if (!tanky) s += 3;             // 脆い子ほど 後ろへ
+      } else {
+        s = 5;
+        if (backHere) s += 2;           // 後ろのなかまを かばえる
+        if (tanky)    s += 3;           // かたい子は 壁向き
+      }
+      if (laneEmpty) s += 6;            // リーダーブロックを作るのが最優先
+
+      if (s > bestScore) { bestScore = s; best = { row, idx: i }; }
+    }
+  }
+  return best;
+}
+
+function aiChooseEffectTarget(effect) {
+  if (effect.kind === "damage") {
+    const foes = allUnits(G.player);
+    const canHitLeader = effect.target === "enemyAny";
+
+    if (canHitLeader && G.player.hp <= effect.value) return G.player;   // とどめ
+    if (foes.length === 0) return canHitLeader ? G.player : null;
+
+    const killable = foes.filter(u => u.hp <= effect.value);
+    if (killable.length > 0) return killable.slice().sort((a, b) => b.atk - a.atk)[0];
+    if (canHitLeader) return G.player;                                  // 倒せないなら 顔を殴る
+    return foes.slice().sort((a, b) => b.atk - a.atk)[0];
+  }
+  if (effect.kind === "heal") {
+    const hurt = allUnits(G.enemy).filter(u => u.hp < u.maxHp)
+                   .sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
+    if (effect.target === "allyAny") {
+      if (G.enemy.hp <= 12) return G.enemy;
+      return hurt[0] || G.enemy;
+    }
+    return hurt[0] || allUnits(G.enemy)[0] || null;
+  }
+  if (effect.kind === "buffAtk") {
+    // すぐ殴れる子のうち 一番強いやつを さらに強く
+    const ready = allUnits(G.enemy).filter(u => !u.sick);
+    return (ready.length ? ready : allUnits(G.enemy)).sort((a, b) => b.atk - a.atk)[0] || null;
+  }
+  return null;
+}
+
+function aiChooseAttackTarget(attacker) {
+  const legal = legalAttackTargets(G.enemy);
+  if (legal.length === 0) return null;
+  const units  = legal.filter(t => !isLeader(t));
+  const leader = legal.includes(G.player) ? G.player : null;
+
+  if (leader && G.player.hp <= attacker.atk) return leader;                    // とどめ
+  const freeKill = units.filter(u => u.hp <= attacker.atk && u.atk < attacker.hp)
+                        .sort((a, b) => b.atk - a.atk)[0];
+  if (freeKill) return freeKill;                                               // 一方的に倒せる
+  const trade = units.filter(u => u.hp <= attacker.atk)
+                     .sort((a, b) => b.atk - a.atk)[0];
+  if (trade && trade.atk >= attacker.atk) return trade;                        // 相打ち上等
+  if (trade) return trade;
+  if (leader) return leader;                                                   // 顔を殴る
+  return units.slice().sort((a, b) => a.atk - b.atk)[0] || null;
+}
+
+/* =========================================================
+   描画
+   ========================================================= */
+const unitEls = new Map();
+
+function unitEl(u) { return unitEls.get(u.uid) || null; }
+function leaderEl(side) {
+  return document.getElementById(side === G.player ? "player-leader" : "enemy-leader");
+}
+
+function render() {
+  if (!G) return;
+  renderLeaders();
+  renderBoard();
+  renderHand();
+  renderEnemyHand();
+  renderButton();
+  renderHint();
+}
+
+function currentTargets() {
+  if (!myTurn()) return [];
+  if (G.mode === "attack" && G.pickedUnit) return legalAttackTargets(G.player);
+  if (G.mode === "target" && G.pending) {
+    if (G.pending.lane) return [];   // レーン選択中は 個別の対象は光らせない
+    return effectCandidates(G.pending.effect, G.player);
+  }
+  return [];
+}
+
+/** いま光らせるべき たてレーン */
+function currentLanes() {
+  if (!myTurn() || G.mode !== "target" || !G.pending || !G.pending.lane) return [];
+  return candidateLanes(G.player);
+}
+
+/** よこ一列を えらぶ状態のとき、光らせる列 */
+function currentRows() {
+  if (!myTurn() || G.mode !== "target" || !G.pending || !G.pending.row) return [];
+  return candidateRows(G.player);
+}
+
+function renderLeaders() {
+  document.getElementById("player-hp").textContent = Math.max(0, G.player.hp);
+  document.getElementById("enemy-hp").textContent  = Math.max(0, G.enemy.hp);
+  document.getElementById("player-mp").textContent = G.player.mp;
+  document.getElementById("player-maxmp").textContent = G.player.maxMp;
+  document.getElementById("enemy-mp").textContent  = G.enemy.mp;
+  document.getElementById("enemy-maxmp").textContent = G.enemy.maxMp;
+  document.getElementById("player-deck").textContent = G.player.deck.length;
+  document.getElementById("enemy-deck").textContent  = G.enemy.deck.length;
+
+  const pips = document.getElementById("mp-pips");
+  pips.innerHTML = "";
+  for (let i = 0; i < Math.max(G.player.maxMp, G.player.mp); i++) {
+    const d = document.createElement("div");
+    d.className = "pip" + (i < G.player.mp ? " full" : "");
+    pips.appendChild(d);
+  }
+
+  const targets = currentTargets();
+  [["player-leader", "player-guard", G.player], ["enemy-leader", "enemy-guard", G.enemy]].forEach(([id, gid, side]) => {
+    document.getElementById(id).classList.toggle("targetable", targets.includes(side));
+    document.getElementById(gid).hidden = !leaderBlocked(side);
+  });
+}
+
+function renderBoard() {
+  const layout = [
+    { id:"enemy-back",   side:G.enemy,  row:"back"  },
+    { id:"enemy-front",  side:G.enemy,  row:"front" },
+    { id:"player-front", side:G.player, row:"front" },
+    { id:"player-back",  side:G.player, row:"back"  },
+  ];
+  const targets = currentTargets();
+  const lanes = currentLanes();
+  const rows  = currentRows();
+  unitEls.clear();
+
+  layout.forEach(({ id, side, row }) => {
+    const rowEl = document.getElementById(id);
+    const tag = rowEl.querySelector(".row-tag");
+    rowEl.innerHTML = "";
+    if (tag) rowEl.appendChild(tag);
+
+    for (let i = 0; i < MAX_SLOTS; i++) {
+      const slot = document.createElement("div");
+      slot.className = "slot";
+      const unit = side[row][i];
+
+      // たて一列の効果：敵側のレーン全体を光らせる
+      if (side === G.enemy && lanes.includes(i)) {
+        slot.classList.add("lane-target");
+        slot.onclick = (ev) => { ev.stopPropagation(); onLaneClick(i); };
+      }
+      // よこ一列の効果：敵側の その列ぜんぶを光らせる
+      if (side === G.enemy && rows.includes(row)) {
+        slot.classList.add("lane-target");
+        slot.onclick = (ev) => { ev.stopPropagation(); onRowClick(row); };
+      }
+
+      if (unit) {
+        slot.appendChild(buildUnit(unit, side, row, i, targets));
+      } else if (side === G.player && G.mode === "place" && myTurn()) {
+        slot.classList.add("droppable");
+        slot.onclick = (ev) => { ev.stopPropagation(); onSlotClick(row, i); };
+      }
+      rowEl.appendChild(slot);
+    }
+  });
+}
+
+function buildUnit(unit, side, row, i, targets) {
+  const el = document.createElement("div");
+  el.className = "unit" + (side === G.enemy ? " foe" : "");
+  unitEls.set(unit.uid, el);
+
+  if (unit.hp <= 0) el.classList.add("dying");
+  else {
+    if (isCovered(side, row, i)) el.classList.add("covered");
+    if (unit.frozen) el.classList.add("frozen");
+    if (side === G.player) {
+      if (unit.sick && !unit.frozen) el.classList.add("sick");
+      if (myTurn()) {
+        if (canAttack(unit)) {
+          if (G.mode !== "target") el.classList.add("ready");
+        } else if (unit.sick || unit.attacked) {
+          el.classList.add("spent");       // まだ動けない / もう動いた
+        }
+      }
+      if (G.pickedUnit === unit) el.classList.add("picked");
+    }
+    if (targets.includes(unit)) el.classList.add("targetable");
+  }
+
+  const nameCls = unit.name.length > 7 ? " xlong" : unit.name.length > 5 ? " long" : "";
+
+  el.innerHTML =
+    `<div class="unit-emoji">${unit.emoji}</div>` +
+    `<div class="unit-name${nameCls}">${unit.name}</div>` +
+    `<div class="unit-stats">` +
+      `<div class="orb atk">${unit.atk}</div>` +
+      `<div class="orb hp${unit.hp < unit.maxHp ? " hurt" : ""}">${Math.max(0, unit.hp)}</div>` +
+    `</div>`;
+
+  el.onclick = (ev) => { ev.stopPropagation(); onUnitClick(unit); };
+  return el;
+}
+
+function renderHand() {
+  const handEl = document.getElementById("player-hand");
+  handEl.innerHTML = "";
+
+  G.player.hand.forEach((cardId, idx) => {
+    const c = CARD_MAP[cardId];
+    const ok = myTurn() && canPlay(G.player, cardId);
+
+    const el = document.createElement("div");
+    el.className = "card" + (c.type === "spell" ? " spell" : "")
+                 + (ok ? " playable" : " locked")
+                 + (G.pickedCard === idx ? " picked" : "");
+
+    const foot = c.type === "unit"
+      ? `<div class="card-foot"><div class="orb atk">${c.atk}</div><div class="orb hp">${c.hp}</div></div>`
+      : `<div class="card-foot"><div class="spell-tag">とくぎ</div></div>`;
+
+    const txt = c.text || "";
+    const size = txt.length > 20 ? " xlong" : txt.length > 14 ? " long" : "";
+
+    el.innerHTML =
+      `<div class="card-cost">${c.cost}</div>` +
+      `<div class="card-art">${c.emoji}</div>` +
+      `<div class="card-name">${c.name}</div>` +
+      `<div class="card-text${size}">${txt}</div>` + foot;
+
+    el.onclick = () => onCardClick(idx);
+    handEl.appendChild(el);
+  });
+}
+
+function renderEnemyHand() {
+  const el = document.getElementById("enemy-hand");
+  el.innerHTML = "";
+  for (let i = 0; i < G.enemy.hand.length; i++) {
+    const b = document.createElement("div");
+    b.className = "card-back";
+    b.textContent = "✦";
+    el.appendChild(b);
+  }
+}
+
+function renderLog() {
+  const el = document.getElementById("log");
+  el.innerHTML = "";
+  G.logs.slice(0, 3).forEach(m => {
+    const d = document.createElement("div");
+    d.textContent = m;
+    el.appendChild(d);
+  });
+}
+
+function renderButton() {
+  const btn = document.getElementById("turn-btn");
+  if (G.over) {
+    btn.disabled = true; btn.textContent = "しょうぶあり";
+    btn.classList.remove("cancel");
+    return;
+  }
+  if (G.mode === "place" || G.mode === "target" || G.mode === "attack") {
+    btn.disabled = false;
+    btn.textContent = "やめる";
+    btn.classList.add("cancel");
+    btn.onclick = clearPick;
+    return;
+  }
+  btn.classList.remove("cancel");
+  btn.textContent = "ターンおわり";
+  btn.disabled = !myTurn();
+  btn.onclick = endTurn;
+}
+
+function renderHint() {
+  const h = document.getElementById("hint");
+  if (G.over) { h.textContent = ""; return; }
+  if (!myTurn()) { h.textContent = "まおうが かんがえている…"; return; }
+  switch (G.mode) {
+    case "place":  h.textContent = "▼ 光るマスに よびだそう（ぜんれつは 後ろのなかまを かばう / 3レーン埋めると リーダーが まもられる）"; break;
+    case "target": h.textContent = G.pending && G.pending.lane
+      ? "▼ ねらう たて一列を えらんでね"
+      : G.pending && G.pending.row
+      ? "▼ ねらう よこ一列（ぜんれつ か こうれつ）を えらんでね"
+      : "▼ 赤く光る たいしょうを えらんでね"; break;
+    case "attack": h.textContent = "▼ こうげきする あいてを えらんでね"; break;
+    default:       h.textContent = "カードを えらんで よびだす ／ ユニットを えらんで こうげき";
+  }
+}
+
+/* ===== エフェクト ===== */
+function floatNum(target, text, cls) {
+  const el = isLeader(target) ? leaderEl(target) : unitEl(target);
+  if (!el) return;
+  const r = el.getBoundingClientRect();
+  const n = document.createElement("div");
+  n.className = "fx-num " + cls;
+  n.textContent = text;
+  n.style.left = (r.left + r.width / 2) + "px";
+  n.style.top  = (r.top + r.height / 2) + "px";
+  document.getElementById("fx").appendChild(n);
+  setTimeout(() => n.remove(), 1000);
+}
+
+/* =========================================================
+   とくぎの エフェクト
+   ========================================================= */
+const FX_LAYER = () => document.getElementById("fx");
+
+/** 対象（ユニット / リーダー）の 画面上の場所 */
+function rectOf(target) {
+  const el = isLeader(target) ? leaderEl(target) : unitEl(target);
+  return el ? el.getBoundingClientRect() : null;
+}
+
+/** そのレーンの 前列＋後列を ふくむ たて長の場所 */
+function laneRect(side, lane) {
+  const f = document.getElementById(side === G.player ? "player-front" : "enemy-front");
+  const b = document.getElementById(side === G.player ? "player-back"  : "enemy-back");
+  const a = f.querySelectorAll(".slot")[lane], c = b.querySelectorAll(".slot")[lane];
+  if (!a || !c) return null;
+  const ra = a.getBoundingClientRect(), rc = c.getBoundingClientRect();
+  return {
+    left: Math.min(ra.left, rc.left), right: Math.max(ra.right, rc.right),
+    top: Math.min(ra.top, rc.top), bottom: Math.max(ra.bottom, rc.bottom),
+    get width()  { return this.right - this.left; },
+    get height() { return this.bottom - this.top; },
+  };
+}
+
+/** その陣営の 盤面ぜんたいの場所 */
+function fieldRect(side) {
+  const f = document.getElementById(side === G.player ? "player-front" : "enemy-front");
+  const b = document.getElementById(side === G.player ? "player-back"  : "enemy-back");
+  const ra = f.getBoundingClientRect(), rb = b.getBoundingClientRect();
+  return {
+    left: Math.min(ra.left, rb.left), right: Math.max(ra.right, rb.right),
+    top: Math.min(ra.top, rb.top), bottom: Math.max(ra.bottom, rb.bottom),
+    get width()  { return this.right - this.left; },
+    get height() { return this.bottom - this.top; },
+  };
+}
+
+/** 矩形にぴったり重ねる エフェクト */
+function fxBox(rect, cls, pad, life) {
+  if (!rect) return null;
+  const p = pad || 0;
+  const el = document.createElement("div");
+  el.className = "fx " + cls;
+  el.style.left   = (rect.left - p) + "px";
+  el.style.top    = (rect.top - p) + "px";
+  el.style.width  = (rect.width + p * 2) + "px";
+  el.style.height = (rect.height + p * 2) + "px";
+  FX_LAYER().appendChild(el);
+  setTimeout(() => el.remove(), life || 1300);
+  return el;
+}
+
+/** 中心に置く エフェクト */
+function fxAt(rect, cls, html, life) {
+  if (!rect) return null;
+  const el = document.createElement("div");
+  el.className = "fx " + cls;
+  el.style.left = (rect.left + rect.width / 2) + "px";
+  el.style.top  = (rect.top + rect.height / 2) + "px";
+  el.style.transform = "translate(-50%,-50%)";
+  if (html) el.innerHTML = html;
+  FX_LAYER().appendChild(el);
+  setTimeout(() => el.remove(), life || 1300);
+  return el;
+}
+
+function fxFlare(target)  { fxAt(rectOf(target), "fx-flare", "", 700); }
+function fxSword(target)  { fxAt(rectOf(target), "fx-sword", "🗡️", 950); }
+function fxBlueGlow(side) { fxBox(leaderEl(side).getBoundingClientRect(), "fx-blue-glow", 6, 1050); }
+function fxFieldGlow(side){ fxBox(fieldRect(side), "fx-field-glow", 4, 1250); }
+function fxStorm(side)    { fxBox(fieldRect(side), "fx-storm", 2, 1350); }
+function fxLaneFlash(side, lane) { fxBox(laneRect(side, lane), "fx-lane-flash", 3, 750); }
+
+/** 回復：緑のグロー＋キラキラ */
+function fxHeal(target) {
+  const r = rectOf(target);
+  if (!r) return;
+  fxBox(r, "fx-heal-glow", 5, 1100);
+  for (let i = 0; i < 7; i++) {
+    const s = document.createElement("div");
+    s.className = "fx fx-spark";
+    s.style.left = (r.left + Math.random() * r.width) + "px";
+    s.style.top  = (r.top + r.height * (.55 + Math.random() * .4)) + "px";
+    s.style.setProperty("--dx", (Math.random() * 34 - 17).toFixed(1) + "px");
+    s.style.setProperty("--dy", (-26 - Math.random() * 26).toFixed(1) + "px");
+    s.style.animationDelay = (Math.random() * .22).toFixed(2) + "s";
+    FX_LAYER().appendChild(s);
+    setTimeout(() => s.remove(), 1400);
+  }
+}
+
+/** つむじ風：レーンの上で ぐるぐる */
+function fxWhirl(side, lane) {
+  const r = laneRect(side, lane);
+  if (!r) return;
+  fxBox(r, "fx-whirl", 8, 1150);
+}
+
+/** サンダー：たて一列を かけぬける 稲光 */
+function fxBolt(side, lane) {
+  const r = laneRect(side, lane);
+  if (!r) return;
+  const el = fxBox(r, "fx-bolt", 6, 800);
+  if (!el) return;
+  const zig = (w, h) => {
+    const x = w / 2;
+    return `${x},0 ${x - w * .22},${h * .28} ${x + w * .16},${h * .40} ` +
+           `${x - w * .18},${h * .70} ${x + w * .14},${h * .80} ${x - w * .04},${h}`;
+  };
+  const w = 100, h = 200;
+  el.innerHTML =
+    `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+       <polyline points="${zig(w, h)}" fill="none" stroke="#fffde0" stroke-width="13" stroke-linejoin="round" stroke-linecap="round"/>
+       <polyline points="${zig(w, h)}" fill="none" stroke="#ffe14a" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
+     </svg>`;
+}
+
+/** カードの効果に ひもづいた エフェクトを 再生する */
+function playFx(effect, caster, target, lane) {
+  if (!effect) return;
+  const foe = opponentOf(caster);
+  switch (effect.fx) {
+    case "flare":     fxFlare(target); return;
+    case "sword":     fxSword(target); return;
+    case "blueGlow":  fxBlueGlow(caster); return;
+    case "fieldGlow": fxFieldGlow(caster); return;
+    case "whirl":     fxWhirl(foe, lane); return;
+    case "bolt":      fxBolt(foe, lane); return;
+    case "storm":     fxStorm(foe); return;
+  }
+  // 指定がない たて一列の効果は 控えめに光らせる
+  if (effect.target === "enemyLane" && lane !== null && lane !== undefined) fxLaneFlash(foe, lane);
+}
+
+function shakeEl(el) {
+  if (!el) return;
+  el.classList.remove("hit");
+  void el.offsetWidth;
+  el.classList.add("hit");
+}
+
+/* =========================================================
+   ルール画面 / 起動
+   ========================================================= */
+const RULES = [
+  ["しょうり", "相手リーダーの <b>HP20</b> を けずりきったら 勝ち。"],
+  ["MP",       "毎ターン MPが 1ずつ ふえる（最大10）。MPを はらって カードを出す。"],
+  ["ばんめん", "たてに <b>3レーン</b>、それぞれ <b>ぜんれつ</b>と <b>こうれつ</b>の マスがある。"],
+  ["ガード",   "こうれつのユニットは、<b>おなじレーンの ぜんれつに なかまがいる間</b> こうげきされない。"],
+  ["ブロック", "<b>3レーンすべてに ユニットがいる</b>と リーダーを こうげきできなくなる（前でも後ろでもOK）。"],
+  ["とくぎ",   "とくぎカードは この2つを <b>無視</b>して、好きな相手を ねらえる。"],
+  ["こうげき", "自分のユニット → あいて の順に クリック。ユニット同士なら はんげきを うける。"],
+  ["こおり",   "❄️が ついた ユニットは <b>つぎの じぶんのターンまで こうげきできない</b>。"],
+];
+
+function showRules() {
+  const r = document.getElementById("modal-rules");
+  r.innerHTML = RULES.map(([k, v]) =>
+    `<div class="rule-line"><span class="rule-key">${k}</span><span>${v}</span></div>`).join("");
+  document.getElementById("modal-title").textContent = "グリフォン";
+  document.getElementById("modal-sub").textContent = "GRID FORMATION";
+  document.getElementById("modal-note").textContent = "対戦相手は CPU。デッキは 20種×2枚の 40枚。";
+  document.getElementById("modal-btn").textContent = G ? "とじる" : "たたかう";
+  document.getElementById("overlay").classList.add("show");
+}
+
+document.getElementById("modal-btn").onclick = () => {
+  document.getElementById("overlay").classList.remove("show");
+  if (!G || G.over) newGame();
+};
+document.getElementById("player-leader").onclick = () => onLeaderClick(G.player);
+document.getElementById("enemy-leader").onclick  = () => onLeaderClick(G.enemy);
+document.getElementById("rules-btn").onclick = showRules;
+document.getElementById("tip-close").onclick = (ev) => {
+  ev.stopPropagation();
+  document.getElementById("rotate-tip").classList.add("closed");
+};
+document.getElementById("restart-btn").onclick = () => {
+  if (G && G.cleanupTimer) clearTimeout(G.cleanupTimer);
+  newGame();
+};
+
+// こうさん：まちがって押さないよう 2段階
+let surrenderArmed = null;
+const surrenderBtn = document.getElementById("surrender-btn");
+surrenderBtn.onclick = () => {
+  if (!G || G.over) return;
+  if (!surrenderArmed) {
+    surrenderBtn.textContent = "ほんとうに こうさんする？";
+    surrenderBtn.classList.add("armed");
+    surrenderArmed = setTimeout(resetSurrender, 4000);
+    return;
+  }
+  resetSurrender();
+  log("ゆうしゃは こうさんした…");
+  G.player.hp = 0;
+  render();
+  checkGameOver();
+};
+function resetSurrender() {
+  clearTimeout(surrenderArmed);
+  surrenderArmed = null;
+  surrenderBtn.textContent = "こうさん";
+  surrenderBtn.classList.remove("armed");
+}
+
+document.getElementById("screen").addEventListener("click", (e) => {
+  if (e.target.id === "screen" || e.target.classList.contains("board") || e.target.classList.contains("slot")) {
+    if (myTurn()) clearPick();
+  }
+});
+
+showRules();
+</script>

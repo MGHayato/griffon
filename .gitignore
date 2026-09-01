@@ -1,0 +1,12 @@
+# Python（apply-cards.py の副産物）
+__pycache__/
+*.pyc
+
+# Node（このあと Vite を入れる）
+node_modules/
+dist/
+
+# エディタ・OS
+.DS_Store
+Thumbs.db
+.vscode/
