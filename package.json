@@ -1,0 +1,21 @@
+{
+  "name": "griffon",
+  "version": "1.0.0",
+  "description": "グリフォン（GRID FORMATION）─ 3レーンの陣形で戦うカードバトルゲーム",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && node scripts/make-artifact.js",
+    "test": "vitest run",
+    "watch": "vitest",
+    "cards": "python apply-cards.py"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "vite": "^8.2.2",
+    "vite-plugin-singlefile": "^2.3.3",
+    "vitest": "^4.1.11"
+  }
+}

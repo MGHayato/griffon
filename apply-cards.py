@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-card-names.md を読んで monster-rivals.html の カード定義を 書きかえるスクリプト。
+card-names.md を読んで src/main.js の カード定義を 書きかえるスクリプト。
 
 つかいかた:
     python apply-cards.py
@@ -17,7 +17,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 MD   = HERE / "card-names.md"
-HTML = HERE / "griffon.html"
+GAME = HERE / "src" / "main.js"
 
 # ---------------------------------------------------------------
 # カード名 → 絵文字
@@ -246,7 +246,7 @@ def read_rows(md, heading_kw):
 
 def main():
     md = MD.read_text(encoding="utf-8")
-    html = HTML.read_text(encoding="utf-8")
+    html = GAME.read_text(encoding="utf-8")
 
     used_ids, unknown = set(), []
     units, spells = [], []
@@ -355,7 +355,7 @@ def main():
     # --- html に 差しこむ ---
     pattern = re.compile(r"const CARDS = \[.*?\n\];", re.S)
     if not pattern.search(html):
-        print("monster-rivals.html の カード定義が 見つからなかったよ。")
+        print("src/main.js の カード定義が 見つからなかったよ。")
         return 1
     html = pattern.sub(lambda _: block, html, count=1)
 
@@ -372,7 +372,7 @@ def main():
             html = html.replace(old, who)
             print(f"リーダー名を 「{old}」→「{who}」に かえたよ")
 
-    HTML.write_text(html, encoding="utf-8")
+    GAME.write_text(html, encoding="utf-8")
     total = sum(u["count"] for u in units) + sum(s["count"] for s in spells)
     print(f"はんえい かんりょう！ ユニット{len(units)}種 / とくぎ{len(spells)}種 / デッキ {total}枚")
     return 0
