@@ -1,5 +1,33 @@
 "use strict";
 
+/* =========================================================
+   グリフォン（GRID FORMATION）
+   盤面の読み取りは core/ にある。ここは 状態を変える処理と
+   CPU・描画・操作の 結線。
+   ========================================================= */
+import {
+  CARDS, CARD_MAP, MAX_SLOTS, START_HP, MAX_MP, HAND_MAX, CLEANUP_DELAY,
+} from "./core/cards.js";
+import {
+  G, setG, makeGame, nextUid, snapshot, restore,
+  sideName, sideOf, opponentOf, isLeader,
+} from "./core/state.js";
+import {
+  allUnits, hasFreeSlot, laneOccupied, leaderBlocked, isCovered,
+  laneUnits, unitLocation, candidateLanes, candidateRows,
+  legalAttackTargets, canAttack, canPlay, effectCandidates,
+} from "./core/board.js";
+
+/** 新しい対戦を はじめる（状態づくりは core、演出は ここ） */
+function newGame() {
+  setG(makeGame());
+  document.getElementById("fx").innerHTML = "";
+  for (let i = 0; i < 3; i++) draw(G.player);
+  for (let i = 0; i < 4; i++) draw(G.enemy);
+  log("たたかいが はじまった！");
+  startTurn("player");
+}
+
 /* スマホで 実寸表示させる（<head> を 用意できない場所でも きくように） */
 (function ensureViewport() {
   if (document.querySelector('meta[name="viewport"]')) return;
@@ -9,108 +37,13 @@
   (document.head || document.documentElement).appendChild(m);
 })();
 
-/* =========================================================
-   カード定義
-   ========================================================= */
-const CARDS = [
-  // --- ユニット（10種 / 20枚）---
-  { id:"slime", name:"スライム", cost:0, type:"unit", atk:1, hp:1, count:2, emoji:"🟦", text:"" },
-  { id:"rabbit", name:"ダッシュうさぎ", cost:1, type:"unit", atk:1, hp:1, count:2, emoji:"🐇", text:"召喚したターンから攻撃できる",
-    rush:true },
-  { id:"goblin", name:"ゴブリン", cost:1, type:"unit", atk:1, hp:1, count:2, emoji:"👺", text:"召喚時：デッキからユニットを1枚手札に加える",
-    effect:{ kind:"search", value:1, target:"self", filter:"unit" } },
-  { id:"wolf", name:"あばれウルフ", cost:2, type:"unit", atk:3, hp:1, count:2, emoji:"🐺", text:"" },
-  { id:"ghost", name:"ゴースト", cost:2, type:"unit", atk:1, hp:2, count:2, emoji:"👻", text:"死亡時：デッキからユニットを1枚手札に加える",
-    effect:{ kind:"search", value:1, target:"self", filter:"unit", when:"death" } },
-  { id:"vampbat", name:"吸血コウモリ", cost:2, type:"unit", atk:1, hp:3, count:2, emoji:"🦇", text:"攻撃で与えたダメージ分、自分のHPを回復",
-    lifesteal:true },
-  { id:"archer", name:"アーチャーエルフ", cost:3, type:"unit", atk:3, hp:1, count:2, emoji:"🏹", text:"召喚時：縦1列に1ダメージ",
-    effect:{ kind:"damage", value:1, target:"enemyLane" } },
-  { id:"healslime", name:"ヒールスライム", cost:3, type:"unit", atk:1, hp:4, count:2, emoji:"🟩", text:"召喚時：味方1体を2回復",
-    effect:{ kind:"heal", value:2, target:"allyUnit" } },
-  { id:"golem", name:"ゴーレム", cost:5, type:"unit", atk:3, hp:7, count:2, emoji:"🗿", text:"" },
-  { id:"dragon", name:"ドラゴン", cost:6, type:"unit", atk:4, hp:6, count:2, emoji:"🐉", text:"召喚時：縦一列に2ダメージ",
-    effect:{ kind:"damage", value:2, target:"enemyLane" } },
 
-  // --- 特技（10種 / 20枚）---
-  { id:"water", name:"聖水", cost:0, type:"spell", count:2, emoji:"💧", text:"MPを1回復",
-    effect:{ kind:"mp", value:1, target:"self", fx:"blueGlow" } },
-  { id:"flare", name:"フレア", cost:1, type:"spell", count:2, emoji:"🔥", text:"敵1体に2ダメージ",
-    effect:{ kind:"damage", value:2, target:"enemyAny", fx:"flare" } },
-  { id:"search", name:"探索", cost:1, type:"spell", count:2, emoji:"🔍", text:"デッキの上から2枚引く",
-    effect:{ kind:"draw", value:2, target:"self" } },
-  { id:"heal", name:"ヒール", cost:2, type:"spell", count:2, emoji:"✨", text:"味方1体を3回復",
-    effect:{ kind:"heal", value:3, target:"allyAny" } },
-  { id:"song", name:"ゆうきの歌", cost:2, type:"spell", count:2, emoji:"🎵", text:"味方全体を +1/+1",
-    effect:{ kind:"buff", value:1, target:"allyAll", fx:"fieldGlow" } },
-  { id:"horn", name:"角笛", cost:2, type:"spell", count:2, emoji:"📯", text:"デッキからコスト2以下のユニットを2枚手札に加える",
-    effect:{ kind:"search", value:2, target:"self", filter:"unit", maxCost:2 } },
-  { id:"hail", name:"ヘイル", cost:2, type:"spell", count:2, emoji:"❄️", text:"敵1体に1ダメージ、対象は次のターン攻撃できない",
-    effect:{ kind:"freeze", value:1, target:"enemyUnit" } },
-  { id:"slash", name:"スラッシュ", cost:2, type:"spell", count:2, emoji:"⚔️", text:"横1列に1ダメージ",
-    effect:{ kind:"damage", value:1, target:"enemyRow" } },
-  { id:"thunder", name:"サンダー", cost:3, type:"spell", count:2, emoji:"⚡", text:"縦1列に2ダメージ",
-    effect:{ kind:"damage", value:2, target:"enemyLane", fx:"bolt" } },
-  { id:"storm", name:"ストーム", cost:4, type:"spell", count:2, emoji:"🌪️", text:"敵全体に2ダメージ",
-    effect:{ kind:"damage", value:2, target:"enemyAll", fx:"storm" } },
-];
-
-const CARD_MAP = {};
-CARDS.forEach(c => CARD_MAP[c.id] = c);
-
-const MAX_SLOTS = 3;
-const START_HP  = 20;
-const MAX_MP    = 10;
-const HAND_MAX  = 8;
-const CLEANUP_DELAY = 420;   // やられた演出を見せる時間
-
-let G = null;
-let uidCounter = 0;
 
 /* =========================================================
    セットアップ
    ========================================================= */
-function makeDeck() {
-  const deck = [];
-  CARDS.forEach(c => { for (let i = 0; i < (c.count || 2); i++) deck.push(c.id); });
-  for (let i = deck.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [deck[i], deck[j]] = [deck[j], deck[i]];
-  }
-  return deck;
-}
 
-function makeSide(isPlayer) {
-  return {
-    isPlayer, hp: START_HP, mp: 0, maxMp: 0,
-    deck: makeDeck(), hand: [],
-    front: [null, null, null],
-    back:  [null, null, null],
-    fatigue: 0,
-  };
-}
 
-function newGame() {
-  G = {
-    player: makeSide(true),
-    enemy:  makeSide(false),
-    turn: "player", turnCount: 0, over: false,
-    mode: "idle",            // idle / place / target / attack
-    pickedCard: null,        // 手札 index
-    pickedUnit: null,        // 攻撃元
-    pending: null,           // 効果の対象待ち
-    logs: [], busy: false,
-    cleanupTimer: null,
-  };
-  uidCounter = 0;
-  document.getElementById("fx").innerHTML = "";
-
-  for (let i = 0; i < 3; i++) draw(G.player);
-  for (let i = 0; i < 4; i++) draw(G.enemy);
-
-  log("たたかいが はじまった！");
-  startTurn("player");
-}
 
 /* =========================================================
    基本
@@ -131,11 +64,6 @@ function draw(side) {
   side.hand.push(id);
 }
 
-function sideName(side) { return side.isPlayer ? "ゆうしゃ" : "まおう"; }
-/** ユニットの持ち主（"player"/"enemy" の印から 引き当てる） */
-function sideOf(unit) { return unit.side === "player" ? G.player : G.enemy; }
-function opponentOf(side) { return side.isPlayer ? G.enemy : G.player; }
-function isLeader(t) { return t === G.player || t === G.enemy; }
 
 function log(msg) {
   G.logs.unshift(msg);
@@ -143,10 +71,6 @@ function log(msg) {
   renderLog();
 }
 
-/** 生きているユニットだけ返す（やられた演出中のものは除外） */
-function allUnits(side) {
-  return [...side.front, ...side.back].filter(u => u && u.hp > 0);
-}
 
 /* =========================================================
    ターン進行
@@ -191,50 +115,15 @@ function endTurn() {
 /* =========================================================
    カードをプレイできるか
    ========================================================= */
-function hasFreeSlot(side) {
-  return side.front.includes(null) || side.back.includes(null);
-}
 
-function canPlay(side, cardId) {
-  const c = CARD_MAP[cardId];
-  if (side.mp < c.cost) return false;
-  if (c.type === "unit") return hasFreeSlot(side);
 
-  const e = c.effect;
-  if ((e.target === "enemyUnit" || e.target === "enemyAll") && allUnits(opponentOf(side)).length === 0) return false;
-  if ((e.target === "allyUnit"  || e.target === "allyAll")  && allUnits(side).length === 0) return false;
-  if (e.target === "enemyLane" && candidateLanes(side).length === 0) return false;
-  if (e.target === "enemyRow"  && candidateRows(side).length === 0) return false;
-  return true;
-}
 
-/** たて一列の効果が ねらえるレーン（敵がいるレーンだけ） */
-function candidateLanes(side) {
-  const foe = opponentOf(side);
-  const lanes = [];
-  for (let i = 0; i < MAX_SLOTS; i++) if (laneOccupied(foe, i)) lanes.push(i);
-  return lanes;
-}
 
-function laneUnits(side, i) {
-  return [side.front[i], side.back[i]].filter(u => u && u.hp > 0);
-}
-
-/** ユニットが 盤面のどこにいるか */
-function unitLocation(unit) {
-  for (const side of [G.player, G.enemy]) {
-    for (const row of ["front", "back"]) {
-      const idx = side[row].indexOf(unit);
-      if (idx >= 0) return { side, row, idx };
-    }
-  }
-  return null;
-}
 
 function summon(side, cardId, row, idx) {
   const c = CARD_MAP[cardId];
   const unit = {
-    uid: ++uidCounter,
+    uid: nextUid(),
     id: c.id, name: c.name, emoji: c.emoji,
     atk: c.atk, hp: c.hp, maxHp: c.hp,
     sick: !c.rush,                    // rush なら 召喚した ターンから 攻撃できる
@@ -299,195 +188,11 @@ function applyEffect(effect, targets, caster) {
   scheduleCleanup();
 }
 
-/** デッキから 条件に合うカードを 手札に加える */
-function searchDeck(side, effect) {
-  let found = 0;
-  for (let i = 0; i < effect.value; i++) {
-    const at = side.deck.findIndex(id => {
-      const c = CARD_MAP[id];
-      if (effect.filter === "unit"  && c.type !== "unit")  return false;
-      if (effect.filter === "spell" && c.type !== "spell") return false;
-      if (effect.maxCost !== undefined && c.cost > effect.maxCost) return false;
-      return true;
-    });
-    if (at < 0) break;
-    const [id] = side.deck.splice(at, 1);
-    if (side.hand.length < HAND_MAX) { side.hand.push(id); found++; }
-    else log(`手札が いっぱいで「${CARD_MAP[id].name}」は もえてしまった…`);
-  }
-  if (found > 0) log(`デッキから ${found}枚 手札に くわえた！`);
-  else log("デッキに 条件に合う カードが なかった…");
-}
 
-/** よこ一列（ぜんれつ or こうれつ）に はたらく効果 */
-function applyRowEffect(effect, foe, row) {
-  playFx(effect, opponentOf(foe), null, null);
-  const inner = Object.assign({}, effect);
-  delete inner.fx;
-  const targets = foe[row].filter(u => u && u.hp > 0);
-  log(`${row === "front" ? "ぜんれつ" : "こうれつ"}を なぎはらった！`);
-  applyEffect(inner, targets, opponentOf(foe));
-}
 
-/** よこ一列の効果が ねらえる列（敵がいる列だけ） */
-function candidateRows(side) {
-  const foe = opponentOf(side);
-  const rows = [];
-  for (const row of ["front", "back"]) {
-    if (foe[row].some(u => u && u.hp > 0)) rows.push(row);
-  }
-  return rows;
-}
 
-/** たて一列に はたらく効果 */
-function applyLaneEffect(effect, foe, lane) {
-  playFx(effect, opponentOf(foe), null, lane);
 
-  if (effect.kind === "swap") {
-    const f = foe.front[lane], b = foe.back[lane];
-    foe.front[lane] = b;
-    foe.back[lane]  = f;
-    log(`${lane + 1}れつ目の 前後が 入れかわった！`);
-    render();
-    scheduleCleanup();
-    return;
-  }
-  const inner = Object.assign({}, effect);
-  delete inner.fx;                                 // エフェクトは もう再生ずみ
-  applyEffect(inner, laneUnits(foe, lane), opponentOf(foe));
-}
 
-function dealDamage(target, amount) {
-  if (isLeader(target)) {
-    target.hp -= amount;
-    floatNum(target, `${amount}`, "dmg");
-    shakeEl(leaderEl(target));
-  } else {
-    target.hp -= amount;
-    floatNum(target, `${amount}`, "dmg");
-    shakeEl(unitEl(target));
-  }
-}
-
-function healTarget(target, amount) {
-  const cap = isLeader(target) ? START_HP : target.maxHp;
-  const before = target.hp;
-  target.hp = Math.min(cap, target.hp + amount);
-  fxHeal(target);                                  // 回復は いつでも 緑のキラキラ
-  floatNum(target, `+${target.hp - before}`, "heal");
-}
-
-/** やられたユニットを少し遅れて盤面から消す（演出のため） */
-function scheduleCleanup() {
-  render();
-  const dying = [];
-  [G.player, G.enemy].forEach(side => {
-    ["front", "back"].forEach(row => {
-      side[row].forEach(u => { if (u && u.hp <= 0) dying.push(u); });
-    });
-  });
-  dying.forEach(u => {
-    if (u.logged) return;
-    u.logged = true;
-    log(`「${u.name}」は たおれた…`);
-
-    // 死亡時：〜 の効果を ここで 発動する
-    const card = CARD_MAP[u.id];
-    const de = card && card.effect;
-    if (de && de.when === "death") {
-      log(`「${u.name}」の 死亡時こうかが はつどうした！`);
-      const owner = sideOf(u);
-      if (de.kind === "search" || de.kind === "draw" || de.kind === "mp") {
-        applyEffect(Object.assign({}, de), [], owner);
-      } else if (de.target === "enemyAll") {
-        applyEffect(Object.assign({}, de), allUnits(opponentOf(owner)), owner);
-      } else if (de.target === "allyAll") {
-        applyEffect(Object.assign({}, de), allUnits(owner), owner);
-      }
-      // 対象を選ぶタイプの死亡時効果は、いまは 未対応（必要になったら 実装する）
-    }
-  });
-  checkGameOver();   // ← 死亡処理待ちでも 勝敗判定は必ず通す
-
-  if (dying.length === 0 || G.cleanupTimer) return;
-  G.cleanupTimer = setTimeout(() => {
-    G.cleanupTimer = null;
-    [G.player, G.enemy].forEach(side => {
-      ["front", "back"].forEach(row => {
-        side[row].forEach((u, i) => { if (u && u.hp <= 0) side[row][i] = null; });
-      });
-    });
-    render();
-  }, CLEANUP_DELAY);
-}
-
-function checkGameOver() {
-  if (G.over) return;
-  if (G.player.hp <= 0 && G.enemy.hp <= 0) finish("draw");
-  else if (G.enemy.hp <= 0)  finish("win");
-  else if (G.player.hp <= 0) finish("lose");
-}
-
-function finish(result) {
-  G.over = true;
-  G.busy = true;
-  setTimeout(() => {
-    const t = document.getElementById("modal-title");
-    const s = document.getElementById("modal-sub");
-    const r = document.getElementById("modal-rules");
-    const n = document.getElementById("modal-note");
-    if (result === "win")  { t.textContent = "しょうり！"; s.textContent = "まおうを たおした"; }
-    if (result === "lose") { t.textContent = "ぜんめつ…";  s.textContent = "ゆうしゃは たおれた"; }
-    if (result === "draw") { t.textContent = "ひきわけ";    s.textContent = "おたがい たおれた"; }
-    r.innerHTML = "";
-    n.textContent = result === "lose"
-      ? "ヒント：3レーンすべてを 埋めると リーダーを ねらわれなくなるよ。"
-      : `${G.turnCount}ターンの たたかいだった。`;
-    document.getElementById("modal-btn").textContent = "もういちど";
-    document.getElementById("overlay").classList.add("show");
-  }, 900);
-}
-
-/* =========================================================
-   攻撃ルール
-   ① 前列のユニットは いつでも狙える
-   ② 後列のユニットは、同じレーン（たて）の前列が空いているときだけ狙える
-   ③ 左・中央・右の 3レーンすべてに ユニットがいると リーダーブロック成立
-      （前列でも後列でもよい）。特技は このブロックを無視する
-   ========================================================= */
-function laneOccupied(side, i) {
-  const f = side.front[i], b = side.back[i];
-  return (f && f.hp > 0) || (b && b.hp > 0);
-}
-
-/** リーダーが まもられているか（3レーンすべてが埋まっている） */
-function leaderBlocked(side) {
-  for (let i = 0; i < MAX_SLOTS; i++) if (!laneOccupied(side, i)) return false;
-  return true;
-}
-
-/** そのユニットが 前列のなかまに かばわれているか */
-function isCovered(side, row, i) {
-  if (row !== "back") return false;
-  const f = side.front[i];
-  return !!(f && f.hp > 0);
-}
-
-function legalAttackTargets(attackerSide) {
-  const foe = opponentOf(attackerSide);
-  const targets = [];
-  for (let i = 0; i < MAX_SLOTS; i++) {
-    const f = foe.front[i], b = foe.back[i];
-    if (f && f.hp > 0) targets.push(f);
-    else if (b && b.hp > 0) targets.push(b);   // 前が空いているレーンだけ後列を狙える
-  }
-  if (!leaderBlocked(foe)) targets.push(foe);
-  return targets;
-}
-
-function canAttack(unit) {
-  return unit.hp > 0 && !unit.sick && !unit.attacked && !unit.frozen && unit.atk > 0;
-}
 
 function doAttack(attacker, target) {
   attacker.attacked = true;
@@ -524,18 +229,6 @@ function clearPick() {
 
 function myTurn() { return G && !G.busy && !G.over && G.turn === "player"; }
 
-function effectCandidates(effect, side) {
-  const foe = opponentOf(side);
-  switch (effect.target) {
-    case "enemyUnit": return allUnits(foe);
-    case "enemyAny":  return [...allUnits(foe), foe];   // リーダーも ねらえる
-    case "enemyAll":  return allUnits(foe);
-    case "allyUnit":  return allUnits(side);
-    case "allyAll":   return allUnits(side);
-    case "allyAny":   return [...allUnits(side), side];
-    default: return [];
-  }
-}
 
 function onCardClick(idx) {
   if (!myTurn()) return;

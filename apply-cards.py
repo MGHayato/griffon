@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-card-names.md を読んで src/main.js の カード定義を 書きかえるスクリプト。
+card-names.md を読んで src/core/cards.js の カード定義を 書きかえるスクリプト。
 
 つかいかた:
     python apply-cards.py
@@ -17,7 +17,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 MD   = HERE / "card-names.md"
-GAME = HERE / "src" / "main.js"
+GAME = HERE / "src" / "core" / "cards.js"
 
 # ---------------------------------------------------------------
 # カード名 → 絵文字
@@ -329,7 +329,7 @@ def main():
             parts.append(f'fx:"{e["fx"]}"')
         return "{ " + ", ".join(parts) + " }"
 
-    lines = ["const CARDS = ["]
+    lines = ["export const CARDS = ["]
     lines.append(f"  // --- ユニット（{len(units)}種 / {sum(u['count'] for u in units)}枚）---")
     for u in units:
         head = (f'  {{ id:"{u["id"]}", name:"{u["name"]}", cost:{u["cost"]}, type:"unit", '
@@ -353,9 +353,9 @@ def main():
     block = "\n".join(lines)
 
     # --- html に 差しこむ ---
-    pattern = re.compile(r"const CARDS = \[.*?\n\];", re.S)
+    pattern = re.compile(r"(?:export\s+)?const CARDS = \[.*?\n\];", re.S)
     if not pattern.search(html):
-        print("src/main.js の カード定義が 見つからなかったよ。")
+        print("src/core/cards.js の カード定義が 見つからなかったよ。")
         return 1
     html = pattern.sub(lambda _: block, html, count=1)
 
