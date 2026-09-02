@@ -207,7 +207,7 @@ function searchDeck(side, effect) {
     const at = side.deck.findIndex(id => {
       const c = CARD_MAP[id];
       if (effect.filter === "unit"  && c.type !== "unit")  return false;
-      if (effect.filter === "spell" && c.type !== "spell") return false;
+      if (effect.filter === "spell" && c.type === "unit") return false;
       if (effect.maxCost !== undefined && c.cost > effect.maxCost) return false;
       return true;
     });
@@ -330,7 +330,7 @@ function finish(result) {
     const r = document.getElementById("modal-rules");
     const n = document.getElementById("modal-note");
     if (result === "win")  { t.textContent = "しょうり！"; s.textContent = "まおうを たおした"; }
-    if (result === "lose") { t.textContent = "ぜんめつ…";  s.textContent = "ゆうしゃは たおれた"; }
+    if (result === "lose") { t.textContent = "ぜんめつ…";  s.textContent = `${sideName(G.player)}は たおれた`; }
     if (result === "draw") { t.textContent = "ひきわけ";    s.textContent = "おたがい たおれた"; }
     r.innerHTML = "";
     n.textContent = result === "lose"
@@ -463,7 +463,7 @@ function castSpell(handIdx, target) {
   const c = CARD_MAP[cardId];
   G.player.mp -= c.cost;
   G.player.hand.splice(handIdx, 1);
-  log(`ゆうしゃは「${c.name}」を となえた！`);
+  log(`${sideName(G.player)}は「${c.name}」を ${c.type === "item" ? "つかった" : "となえた"}！`);
 
   const e = c.effect;
   if (e.target === "enemyLane")     applyLaneEffect(e, G.enemy, target);
@@ -588,7 +588,7 @@ function aiStep() {
 
 /** ムダ打ちを避ける（満タンなのに回復、など） */
 function aiIsWorthPlaying(E, c) {
-  if (c.type !== "spell") return true;
+  if (c.type === "unit") return true;      // ユニットは いつでも 出す
   const e = c.effect;
   if (e.kind === "heal") {
     const hurtAlly = allUnits(E).some(u => u.hp < u.maxHp);
@@ -604,7 +604,7 @@ function aiIsWorthPlaying(E, c) {
     return E.deck.some(id => {                        // 撃つ前に タマがあるか 確かめる
       const t = CARD_MAP[id];
       if (e.filter === "unit"  && t.type !== "unit")  return false;
-      if (e.filter === "spell" && t.type !== "spell") return false;
+      if (e.filter === "spell" && t.type === "unit") return false;
       if (e.maxCost !== undefined && t.cost > e.maxCost) return false;
       return true;
     });
@@ -661,7 +661,7 @@ function aiChooseCard(playable) {
   // 確実に除去できる呪文があれば使う
   for (const x of playable) {
     const e = x.c.effect;
-    if (x.c.type === "spell" && e && e.kind === "damage" && e.target === "enemyUnit") {
+    if (x.c.type !== "unit" && e && e.kind === "damage" && e.target === "enemyUnit") {
       if (foes.some(u => u.hp <= e.value && u.atk >= 3)) return x;
     }
   }
@@ -697,7 +697,7 @@ function aiPlayCard(pick) {
     summon(E, c.id, spot.row, spot.idx);
     if (c.effect) resolve(c.effect);
   } else {
-    log(`まおうは「${c.name}」を となえた！`);
+    log(`${sideName(G.enemy)}は「${c.name}」を ${c.type === "item" ? "つかった" : "となえた"}！`);
     resolve(c.effect);
   }
 }
@@ -953,13 +953,13 @@ function renderHand() {
     const ok = myTurn() && canPlay(G.player, cardId);
 
     const el = document.createElement("div");
-    el.className = "card" + (c.type === "spell" ? " spell" : "")
+    el.className = "card" + (c.type === "spell" ? " spell" : c.type === "item" ? " item" : "")
                  + (ok ? " playable" : " locked")
                  + (G.pickedCard === idx ? " picked" : "");
 
     const foot = c.type === "unit"
       ? `<div class="card-foot"><div class="orb atk">${c.atk}</div><div class="orb hp">${c.hp}</div></div>`
-      : `<div class="card-foot"><div class="spell-tag">とくぎ</div></div>`;
+      : `<div class="card-foot"><div class="spell-tag">${c.type === "item" ? "どうぐ" : "とくぎ"}</div></div>`;
 
     const txt = c.text || "";
     // 2〜4行に なってよいので、ふだんは 縮めない。
@@ -1052,7 +1052,7 @@ function showZoom(card, opts = {}) {
   const { foe = false, atk = card.atk, hp = card.hp, maxHp = card.hp } = opts;
   const el = document.getElementById("zoom-card");
   el.className = "zoom-card"
-    + (card.type === "spell" ? " spell" : "")
+    + (card.type === "spell" ? " spell" : card.type === "item" ? " item" : "")
     + (foe ? " foe" : "");
 
   const foot = card.type === "unit"
@@ -1062,7 +1062,7 @@ function showZoom(card, opts = {}) {
            hp < maxHp ? `${Math.max(0, hp)}<span class="max">/${maxHp}</span>` : Math.max(0, hp)
          }</div>
        </div>`
-    : `<div class="zoom-foot"><div class="zoom-tag">とくぎ</div></div>`;
+    : `<div class="zoom-foot"><div class="zoom-tag">${card.type === "item" ? "どうぐ" : "とくぎ"}</div></div>`;
 
   el.innerHTML =
     `<div class="zoom-cost">${card.cost}</div>` +

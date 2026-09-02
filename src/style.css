@@ -422,6 +422,7 @@
     flex-shrink: 0;
   }
   .card.spell { background: linear-gradient(170deg, #f4e6ff 0%, #cdb4ec 42%, #9d7cc6 100%); }
+  .card.item  { background: linear-gradient(170deg, #e6fff0 0%, #b0dfc2 42%, #7cb695 100%); }
   .card:hover { transform: translateY(-14px); z-index: 10; }
   .card.playable { border-color: var(--gold); box-shadow: 0 0 13px rgba(242,193,78,.55), 0 4px 10px rgba(0,0,0,.6); }
   .card.locked { filter: grayscale(.8) brightness(.55); cursor: default; }
@@ -458,6 +459,7 @@
     animation: zoomIn .18s ease-out;
   }
   .zoom-card.spell { background: linear-gradient(170deg, #f4e6ff 0%, #cdb4ec 42%, #9d7cc6 100%); }
+  .zoom-card.item  { background: linear-gradient(170deg, #e6fff0 0%, #b0dfc2 42%, #7cb695 100%); }
   .zoom-card.foe   { background: linear-gradient(170deg, #ffe6ec 0%, #e9b6c4 42%, #c98da0 100%); }
   @keyframes zoomIn {
     from { opacity: 0; transform: scale(.85); }
@@ -546,6 +548,9 @@
     font-family: var(--font-dot);
     font-size: 10px; letter-spacing: 2px; color: #4a2a70;
   }
+  /* どうぐは みどり系なので 文字も みどりに */
+  .card.item .spell-tag,
+  .zoom-card.item .zoom-tag { color: #1d5c3d; }
 
   /* ===== ダメージ数字（再描画に消されない独立レイヤー） ===== */
   #fx { position: fixed; inset: 0; pointer-events: none; z-index: 90; }

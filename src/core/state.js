@@ -3,7 +3,7 @@
    G ひとつに ぜんぶ入っている。JSONにできる形を たもつこと
    （相手に そのまま送れることが 対人戦の 前提になる）
    ========================================================= */
-import { CARDS, START_HP } from "./cards.js";
+import { CARDS, DECKS, START_HP } from "./cards.js";
 
 /** 対戦の状態。ESMの live binding なので、import 先でも最新が見える */
 export let G = null;
@@ -13,9 +13,27 @@ let uidCounter = 0;
 export function nextUid() { return ++uidCounter; }
 export function resetUid() { uidCounter = 0; }
 
-export function makeDeck() {
+/** いま えらんでいるデッキ（まだ 選択画面は 無いので アリス固定） */
+export let currentDeckId = DECKS[0] ? DECKS[0].id : "alice";
+export function setDeck(id) {
+  if (DECKS.some(d => d.id === id)) currentDeckId = id;
+  return currentDeckId;
+}
+export function getDeck(id = currentDeckId) {
+  return DECKS.find(d => d.id === id) || DECKS[0];
+}
+/** 中身が 入っていて えらべるデッキ だけ返す */
+export function playableDecks() {
+  return DECKS.filter(d => d.cards.length > 0);
+}
+
+/** デッキの中身から 山札を つくって まぜる */
+export function makeDeck(deckId = currentDeckId) {
+  const d = getDeck(deckId);
   const deck = [];
-  CARDS.forEach(c => { for (let i = 0; i < (c.count || 2); i++) deck.push(c.id); });
+  if (d) d.cards.forEach(([id, count]) => {
+    for (let i = 0; i < count; i++) deck.push(id);
+  });
   for (let i = deck.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [deck[i], deck[j]] = [deck[j], deck[i]];
