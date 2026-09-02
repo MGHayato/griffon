@@ -929,7 +929,10 @@ function renderHand() {
       : `<div class="card-foot"><div class="spell-tag">とくぎ</div></div>`;
 
     const txt = c.text || "";
-    const size = txt.length > 20 ? " xlong" : txt.length > 14 ? " long" : "";
+    // 2〜4行に なってよいので、ふだんは 縮めない。
+    // いちばん長い説明（角笛24文字）が スマホで あふれるので、
+    // 23文字を こえたら 少しだけ 小さくする
+    const size = txt.length > 34 ? " xlong" : txt.length > 23 ? " long" : "";
 
     el.innerHTML =
       `<div class="card-cost">${c.cost}</div>` +
