@@ -10,6 +10,7 @@ import { CARDS, CARD_MAP, DECKS } from "../src/core/cards.js";
 import {
   makeDeck, getDeck, playableDecks, makeSide, resolveDeckId,
   getMyDeckId, getFoeDeckId, setMyDeckId, setFoeDeckId, RANDOM_DECK, sideName,
+  deckChoices,
 } from "../src/core/state.js";
 
 describe("カードライブラリ", () => {
@@ -120,11 +121,19 @@ describe("デッキえらび", () => {
     expect(getMyDeckId()).toBe(before);
   });
 
-  it("あいてだけ おまかせに できる", () => {
+  it("じぶんも あいても おまかせに できる", () => {
     setFoeDeckId(RANDOM_DECK);
-    expect(getFoeDeckId()).toBe(RANDOM_DECK);
     setMyDeckId(RANDOM_DECK);
-    expect(getMyDeckId()).not.toBe(RANDOM_DECK);
+    expect(getFoeDeckId()).toBe(RANDOM_DECK);
+    expect(getMyDeckId()).toBe(RANDOM_DECK);
+    setMyDeckId("alice");                     // もどしておく
+  });
+
+  it("えらべるのは おまかせ ＋ 中身の あるデッキ", () => {
+    const list = deckChoices();
+    expect(list[0].id).toBe(RANDOM_DECK);     // おまかせが さきあたま
+    expect(list.length).toBe(playableDecks().length + 1);
+    for (const d of list.slice(1)) expect(d.cards.length).toBeGreaterThan(0);
   });
 
   it("おまかせは えらべるデッキの どれかに なる", () => {

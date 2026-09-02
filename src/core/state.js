@@ -73,7 +73,7 @@ function saveDeckId(key, id) {
 }
 
 export function getMyDeckId() {
-  if (myDeckId === null) myDeckId = loadDeckId(DECK_KEY_ME, false);
+  if (myDeckId === null) myDeckId = loadDeckId(DECK_KEY_ME, true);
   return myDeckId;
 }
 export function getFoeDeckId() {
@@ -81,16 +81,22 @@ export function getFoeDeckId() {
   return foeDeckId;
 }
 
-/** じぶんの デッキを 決める。中身の 空いた デッキは えらべない */
+/** じぶんの デッキを 決める。「おまかせ」も えらべる */
 export function setMyDeckId(id) {
-  if (isPlayable(id)) { myDeckId = id; saveDeckId(DECK_KEY_ME, id); }
+  if (id === RANDOM_DECK || isPlayable(id)) { myDeckId = id; saveDeckId(DECK_KEY_ME, id); }
   return getMyDeckId();
 }
 
-/** あいての デッキを 決める。こちらは「おまかせ」も 通る */
+/** あいての デッキを 決める。こちらも「おまかせ」が えらべる */
 export function setFoeDeckId(id) {
   if (id === RANDOM_DECK || isPlayable(id)) { foeDeckId = id; saveDeckId(DECK_KEY_FOE, id); }
   return getFoeDeckId();
+}
+
+/** えらべる ものの ならび（さきに「おまかせ」）。デッキ画面が つかう */
+export function deckChoices() {
+  return [{ id: RANDOM_DECK, label: "おまかせ", emoji: "🎲", desc: "たたかうたびに ランダム" },
+          ...playableDecks()];
 }
 
 /** デッキの中身から 山札を つくって まぜる */

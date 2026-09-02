@@ -13,9 +13,8 @@ import {
   sideName, sideOf, opponentOf, isLeader, sortHand, sideDeck,
   getPlayerName, setPlayerName, DEFAULT_NAMES, NAME_MAX,
   playableDecks, getDeck, getMyDeckId, getFoeDeckId,
-  setMyDeckId, setFoeDeckId, RANDOM_DECK,
+  setMyDeckId, setFoeDeckId, RANDOM_DECK, deckChoices,
 } from "./core/state.js";
-import { DECKS } from "./core/cards.js";
 import {
   allUnits, hasFreeSlot, laneOccupied, leaderBlocked, isCovered,
   laneUnits, unitLocation, candidateLanes, candidateRows,
@@ -1591,9 +1590,7 @@ function onMenuPick(btn, go) {
       armMenuItem(btn, "ほんとうに さいしょから？");
       return;
     }
-    closeModal();
-    if (G && G.cleanupTimer) clearTimeout(G.cleanupTimer);
-    newGame();
+    showDeckPicker(true);       // やり直すときも デッキから えらべる
     return;
   }
 
@@ -1661,75 +1658,79 @@ function showNameEditor() {
 
 /* =========================================================
    デッキえらび
-   じぶんの ぶんと あいての ぶんを ひとつの画面で 決める。
-   中身の 空いた デッキは 押せない。
+   ◀ ▶ で 送る スロットを 上下に 2つ。
+   たたかいを はじめる前に かならず ここを 通る。
    ========================================================= */
 
-/** 「きめる」を 押すまでの かりの えらび */
+/** 「たたかう」を 押すまでの かりの えらび */
 let pickMy = null;
 let pickFoe = null;
+/** この画面から そのまま たたかいが はじまるか */
+let deckStartsGame = false;
 
-/** デッキ1つぶんの ボタン */
-function deckRow(d, who, picked) {
-  const empty = d.cards.length === 0;
-  const cls = "deck-item" + (empty ? " empty" : "") + (picked === d.id ? " on" : "");
-  return `<button type="button" class="${cls}" data-who="${who}" data-id="${d.id}"${empty ? " disabled" : ""}>
-      <span class="deck-face">${d.emoji}</span>
-      <span class="deck-body">
-        <span class="deck-name">${d.label}</span>
-        <span class="deck-desc">${empty ? "まだ 空っぽ" : (d.desc || "")}</span>
-      </span>
-      <span class="deck-num">${empty ? "—" : d.total + "枚"}</span>
-    </button>`;
+/** ◀ ▶ で 送る スロット ひとつぶん */
+function deckSlot(who, picked, label) {
+  const list = deckChoices();
+  const at = Math.max(0, list.findIndex(d => d.id === picked));
+  const d = list[at] || list[0];
+  return `<div class="deck-slot">
+      <div class="deck-slot-label">${label}</div>
+      <div class="deck-slot-row">
+        <button type="button" class="deck-arrow" data-who="${who}" data-dir="-1" aria-label="まえ">◀</button>
+        <button type="button" class="deck-slot-face" data-who="${who}" data-dir="1">
+          <span class="deck-slot-emoji">${d.emoji}</span>
+          <span class="deck-slot-name">${d.label}</span>
+        </button>
+        <button type="button" class="deck-arrow" data-who="${who}" data-dir="1" aria-label="つぎ">▶</button>
+      </div>
+      <div class="deck-slot-desc">${d.desc || ""}</div>
+      <div class="deck-dots">${list.map((x, i) =>
+        `<span class="dot${i === at ? " on" : ""}"></span>`).join("")}</div>
+    </div>`;
 }
 
-/** あいてだけの「おまかせ」 */
-function randomRow(picked) {
-  const cls = "deck-item" + (picked === RANDOM_DECK ? " on" : "");
-  return `<button type="button" class="${cls}" data-who="foe" data-id="${RANDOM_DECK}">
-      <span class="deck-face">🎲</span>
-      <span class="deck-body">
-        <span class="deck-name">おまかせ</span>
-        <span class="deck-desc">たたかうたびに ランダム</span>
-      </span>
-      <span class="deck-num">?</span>
-    </button>`;
+/** ◀ ▶ の 送り。はしまで いったら 反対がわへ まわる */
+function spinDeck(who, dir) {
+  const list = deckChoices();
+  if (!list.length) return;
+  const now = who === "me" ? pickMy : pickFoe;
+  const at = Math.max(0, list.findIndex(d => d.id === now));
+  const next = list[(at + dir + list.length) % list.length].id;
+  if (who === "me") pickMy = next; else pickFoe = next;
+  renderDeckPicker();
 }
 
 function renderDeckPicker() {
   const box = document.getElementById("modal-rules");
   box.innerHTML =
     `<div class="deck-pick">
-       <div class="deck-head">じぶん</div>
-       <div class="deck-list">${DECKS.map(d => deckRow(d, "me", pickMy)).join("")}</div>
-       <div class="deck-head">あいて（CPU）</div>
-       <div class="deck-list">${randomRow(pickFoe)}${DECKS.map(d => deckRow(d, "foe", pickFoe)).join("")}</div>
+       ${deckSlot("foe", pickFoe, "あいての デッキ")}
+       <div class="deck-vs">VS</div>
+       ${deckSlot("me", pickMy, "あなたの デッキ")}
      </div>`;
 
-  box.querySelectorAll(".deck-item").forEach((b) => {
-    b.onclick = () => {
-      if (b.disabled) return;
-      if (b.dataset.who === "me") pickMy = b.dataset.id;
-      else                        pickFoe = b.dataset.id;
-      renderDeckPicker();                 // えらんだ しるしを つけ直す
-    };
+  box.querySelectorAll("[data-dir]").forEach((b) => {
+    b.onclick = () => spinDeck(b.dataset.who, Number(b.dataset.dir));
   });
 }
 
-/** デッキを えらぶ画面。対戦中は 開けない */
-function showDeckPicker() {
+/**
+ * デッキを えらぶ画面。
+ * start=true なら「たたかう」で そのまま たたかいが はじまる。
+ * 対戦の さいちゅうは メニューから 開けない。
+ */
+function showDeckPicker(start = false) {
   modalMode = "deck";
+  deckStartsGame = start;
   pickMy = getMyDeckId();
   pickFoe = getFoeDeckId();
   renderDeckPicker();
 
-  const ready = playableDecks().length;
-  document.getElementById("modal-title").textContent = "デッキ";
-  document.getElementById("modal-sub").textContent = "どれで たたかう？";
-  document.getElementById("modal-note").textContent = ready > 1
-    ? "この端末に おぼえておくよ。つぎの たたかいから つかう。"
-    : "いま つかえるのは 1つだけ。cards/ に 書き足すと ここに ふえるよ。";
-  document.getElementById("modal-btn").textContent = "きめる";
+  document.getElementById("modal-title").textContent = "デッキえらび";
+  document.getElementById("modal-sub").textContent = "だれで たたかう？";
+  document.getElementById("modal-note").textContent =
+    "◀ ▶ で えらぶ。えらんだものは この端末に おぼえておくよ。";
+  document.getElementById("modal-btn").textContent = start ? "たたかう" : "きめる";
   document.getElementById("overlay").classList.add("show");
 }
 
@@ -1752,8 +1753,13 @@ document.getElementById("modal-btn").onclick = () => {
   if (modalMode === "deck") {
     setMyDeckId(pickMy);
     setFoeDeckId(pickFoe);
-    if (!G || G.over) { showTitle(); return; }   // タイトルには もどしてあげる
     closeModal();
+    if (deckStartsGame) {                        // ここから そのまま たたかいへ
+      if (G && G.cleanupTimer) clearTimeout(G.cleanupTimer);
+      newGame();
+    } else if (!G || G.over) {
+      showTitle();                               // 見にきただけなら タイトルへ もどす
+    }
     return;
   }
   // なまえ画面は 入力を 保存してから とじる
@@ -1768,7 +1774,8 @@ document.getElementById("modal-btn").onclick = () => {
   document.getElementById("overlay").classList.remove("show");
   // マニュアルを とじただけのときは 何も起こさない
   if (modalMode === "manual") return;
-  if (!G || G.over) newGame();
+  // タイトルや 決着のあとは、まず デッキを えらんでから たたかう
+  if (!G || G.over) showDeckPicker(true);
 };
 // マニュアルは まわりの くらいところを タップしても とじられる
 // （なまえや デッキは 保存が いるので ボタンから とじてもらう）
