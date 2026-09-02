@@ -380,7 +380,15 @@ function onCardClick(idx) {
   if (!myTurn()) return;
   const cardId = G.player.hand[idx];
   if (!canPlay(G.player, cardId)) return;
-  if (G.pickedCard === idx) { clearPick(); return; }
+
+  // すでに えらんでいる カードを もう一度おした
+  if (G.pickedCard === idx) {
+    // 対象を えらばない とくぎは ここで はじめて 発動する
+    // （1回さわっただけで 出てしまわないように）
+    if (G.mode === "confirm") { castSpell(idx, null); return; }
+    clearPick();
+    return;
+  }
 
   const c = CARD_MAP[cardId];
   G.pickedUnit = null;
@@ -390,13 +398,18 @@ function onCardClick(idx) {
     G.mode = "place";
   } else {
     const e = c.effect;
-    if (needsNoTarget(e)) { castSpell(idx, null); return; }
-    G.mode = "target";
-    G.pending = {
-      effect: e, fromHand: true,
-      lane: e.target === "enemyLane",
-      row:  e.target === "enemyRow",
-    };
+    if (needsNoTarget(e)) {
+      // えらんだだけ。もう一度おすと 発動する
+      G.mode = "confirm";
+      G.pending = { effect: e, fromHand: true, confirm: true };
+    } else {
+      G.mode = "target";
+      G.pending = {
+        effect: e, fromHand: true,
+        lane: e.target === "enemyLane",
+        row:  e.target === "enemyRow",
+      };
+    }
   }
   render();
 }
@@ -910,7 +923,15 @@ function buildUnit(unit, side, row, i, targets) {
       `<div class="orb hp${unit.hp < unit.maxHp ? " hurt" : ""}">${Math.max(0, unit.hp)}</div>` +
     `</div>`;
 
-  el.onclick = (ev) => { ev.stopPropagation(); onUnitClick(unit); };
+  el.onclick = (ev) => {
+    ev.stopPropagation();
+    if (longPressed) { longPressed = false; return; }     // 長おしの直後は 動かさない
+    onUnitClick(unit);
+  };
+  bindZoom(el, () => ({
+    card: CARD_MAP[unit.id],
+    opts: { foe: side === G.enemy, atk: unit.atk, hp: unit.hp, maxHp: unit.maxHp },
+  }));
   return el;
 }
 
@@ -943,7 +964,11 @@ function renderHand() {
       `<div class="card-name">${c.name}</div>` +
       `<div class="card-text${size}">${txt}</div>` + foot;
 
-    el.onclick = () => onCardClick(idx);
+    el.onclick = () => {
+      if (longPressed) { longPressed = false; return; }   // 長おしの直後は 出さない
+      onCardClick(idx);
+    };
+    bindZoom(el, () => ({ card: c }));
     handEl.appendChild(el);
   });
 }
@@ -976,7 +1001,7 @@ function renderButton() {
     btn.classList.remove("cancel");
     return;
   }
-  if (G.mode === "place" || G.mode === "target" || G.mode === "attack") {
+  if (G.mode === "place" || G.mode === "target" || G.mode === "attack" || G.mode === "confirm") {
     btn.disabled = false;
     btn.textContent = "やめる";
     btn.classList.add("cancel");
@@ -1001,8 +1026,80 @@ function renderHint() {
       ? "▼ ねらう よこ一列（ぜんれつ か こうれつ）を えらんでね"
       : "▼ 赤く光る たいしょうを えらんでね"; break;
     case "attack": h.textContent = "▼ こうげきする あいてを えらんでね"; break;
+    case "confirm": h.textContent = "▼ もう一度 カードを タップすると つかえるよ"; break;
     default:       h.textContent = "カードを えらんで よびだす ／ ユニットを えらんで こうげき";
   }
+}
+
+/* =========================================================
+   カードを 大きく見る（長おし / 右クリック）
+   ========================================================= */
+const LONG_PRESS_MS = 420;
+let pressTimer = null;
+let longPressed = false;      // 長おしで開いた直後の タップを 打ち消すため
+
+/** 手札のカード / 盤上のユニット を 大きく表示する */
+function showZoom(card, opts = {}) {
+  const { foe = false, atk = card.atk, hp = card.hp, maxHp = card.hp } = opts;
+  const el = document.getElementById("zoom-card");
+  el.className = "zoom-card"
+    + (card.type === "spell" ? " spell" : "")
+    + (foe ? " foe" : "");
+
+  const foot = card.type === "unit"
+    ? `<div class="zoom-foot">
+         <div class="orb atk">${atk}</div>
+         <div class="orb hp${hp < maxHp ? " hurt" : ""}">${Math.max(0, hp)}</div>
+       </div>`
+    : `<div class="zoom-foot"><div class="zoom-tag">とくぎ</div></div>`;
+
+  el.innerHTML =
+    `<div class="zoom-cost">${card.cost}</div>` +
+    `<div class="zoom-art">${card.emoji}</div>` +
+    `<div class="zoom-name">${card.name}</div>` +
+    `<div class="zoom-text">${card.text || "　"}</div>` + foot +
+    `<div class="zoom-hint">どこかを タップすると とじる</div>`;
+
+  document.getElementById("zoom").classList.add("show");
+}
+
+function hideZoom() {
+  document.getElementById("zoom").classList.remove("show");
+  // とじたら 打ち消しは 解除する。
+  // （そうしないと 拡大を見たあと 1回目の タップが きかない）
+  longPressed = false;
+}
+
+function zoomOpen() {
+  return document.getElementById("zoom").classList.contains("show");
+}
+
+/**
+ * 長おし・右クリックで 拡大できるようにする。
+ * ふつうの タップは これまでどおり（出す・こうげきする）。
+ */
+function bindZoom(el, getCard) {
+  el.addEventListener("pointerdown", () => {
+    clearTimeout(pressTimer);
+    longPressed = false;
+    pressTimer = setTimeout(() => {
+      pressTimer = null;
+      longPressed = true;
+      const c = getCard();
+      if (c) showZoom(c.card, c.opts);
+    }, LONG_PRESS_MS);
+  });
+  const cancel = () => { clearTimeout(pressTimer); pressTimer = null; };
+  el.addEventListener("pointerup", cancel);
+  el.addEventListener("pointercancel", cancel);
+  el.addEventListener("pointerleave", cancel);
+  el.addEventListener("contextmenu", (ev) => {
+    ev.preventDefault();
+    cancel();
+    longPressed = true;
+    const c = getCard();
+    if (c) showZoom(c.card, c.opts);
+  });
 }
 
 /* ===== エフェクト ===== */
@@ -1241,6 +1338,7 @@ document.getElementById("modal-btn").onclick = () => {
 document.getElementById("player-leader").onclick = () => onLeaderClick(G.player);
 document.getElementById("enemy-leader").onclick  = () => onLeaderClick(G.enemy);
 document.getElementById("manual-btn").onclick = showManual;
+document.getElementById("zoom").onclick = hideZoom;
 document.getElementById("tip-close").onclick = (ev) => {
   ev.stopPropagation();
   document.getElementById("rotate-tip").classList.add("closed");
