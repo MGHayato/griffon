@@ -20,6 +20,7 @@ import {
   allUnits, hasFreeSlot, laneOccupied, leaderBlocked, isCovered,
   laneUnits, unitLocation, candidateLanes, candidateRows,
   legalAttackTargets, canAttack, canPlay, effectCandidates,
+  costOf, frozenUnits,
 } from "./core/board.js";
 
 /** 新しい対戦を はじめる（状態づくりは core、演出は ここ） */
@@ -87,6 +88,13 @@ function startTurn(who) {
 
   side.maxMp = Math.min(MAX_MP, side.maxMp + 1);
   side.mp = side.maxMp;
+  side.itemDiscount = 0;                  // どうぐの ねびきは そのターン かぎり
+  // とくぎ封じは 相手の 1ターンぶん。そのターンが 終わったので ここで とく
+  const other = opponentOf(side);
+  if (other.noSpell) { other.noSpell = false; log(`${sideName(other)}の とくぎ封じが とけた`); }
+
+  // まもり（ヴェール・木の盾）は 自分のターンが 来るたびに 1へる
+  tickShield(side);
   allUnits(side).forEach(u => {
     u.sick = false;
     u.attacked = false;
@@ -94,7 +102,16 @@ function startTurn(who) {
       u.frozen--;
       if (u.frozen <= 0) { delete u.frozen; log(`${u.name}の こおりが とけた`); }
     }
+    tickShield(u);
   });
+
+  // 毒は 自分のターンの はじめに 1ダメージ。とけることは ない
+  allUnits(side).filter(u => u.poison).forEach(u => {
+    log(`「${u.name}」は 毒で 1ダメージ`);
+    dealDamage(u, 1, { ignoreShield: true });
+  });
+  scheduleCleanup();
+
   draw(side);
   if (G.over) return;
 
@@ -134,6 +151,7 @@ function summon(side, cardId, row, idx) {
     sick: !c.rush,                    // rush なら 召喚した ターンから 攻撃できる
     attacked: false, side: side.isPlayer ? "player" : "enemy",
     lifesteal: !!c.lifesteal,
+    healOnAttack: c.healOnAttack || 0,
   };
   side[row][idx] = unit;
   log(`${sideName(side)}は「${c.name}」を ${row === "front" ? "ぜんれつ" : "こうれつ"}に よびだした！`);
@@ -167,6 +185,32 @@ function applyEffect(effect, targets, caster) {
     scheduleCleanup();
     return;
   }
+  if (effect.kind === "silence") {
+    const foe = opponentOf(side);
+    foe.noSpell = true;
+    log(`${sideName(foe)}は つぎのターン とくぎを つかえない！`);
+    floatNum(foe, "とくぎ ふうじ！", "freeze");
+    render();
+    return;
+  }
+  if (effect.kind === "discount") {
+    side.itemDiscount = (side.itemDiscount || 0) + effect.value;
+    log(`このターン どうぐが ${side.itemDiscount}やすくなった！`);
+    floatNum(side, `どうぐ -${side.itemDiscount}`, "buff");
+    render();
+    return;
+  }
+  if (effect.kind === "salvage") {
+    salvageItem(side, effect.value);
+    scheduleCleanup();
+    return;
+  }
+  if (effect.kind === "shield" && effect.target === "allySelf") {
+    grantShield(side, effect);
+    log(`${sideName(side)}の 味方全体が ${effect.turns}ターン ダメージ-${effect.value}！`);
+    render();
+    return;
+  }
 
   targets.forEach(t => {
     if (effect.kind === "damage")    dealDamage(t, effect.value);
@@ -177,6 +221,18 @@ function applyEffect(effect, targets, caster) {
         floatNum(t, "こおった！", "freeze");
         log(`${t.name}は こおりついた！`);
       }
+    }
+    else if (effect.kind === "poison") {
+      if (t.hp > 0 && !t.poison) {
+        t.poison = true;
+        floatNum(t, "どく！", "freeze");
+        log(`「${t.name}」は 毒に おかされた！`);
+      }
+    }
+    else if (effect.kind === "shield") {
+      grantShield(t, effect);
+      floatNum(t, `まもり -${effect.value}`, "buff");
+      log(`「${t.name}」は ${effect.turns}ターン ダメージ-${effect.value}！`);
     }
     else if (effect.kind === "heal") healTarget(t, effect.value);
     else if (effect.kind === "buff") {
@@ -253,16 +309,61 @@ function applyLaneEffect(effect, foe, lane) {
   applyEffect(inner, laneUnits(foe, lane), opponentOf(foe));
 }
 
-function dealDamage(target, amount) {
-  if (isLeader(target)) {
-    target.hp -= amount;
-    floatNum(target, `${amount}`, "dmg");
-    shakeEl(leaderEl(target));
-  } else {
-    target.hp -= amount;
-    floatNum(target, `${amount}`, "dmg");
-    shakeEl(unitEl(target));
+/* ----- まもり（うけるダメージを へらす） ----- */
+
+/** そのユニット／リーダーが へらせる ダメージの ぶん */
+function shieldOf(t) {
+  let v = (t.shield && t.shield.value) || 0;
+  if (!isLeader(t)) {
+    const s = sideOf(t);                       // 味方全体の まもりも かさなる
+    if (s && s.shield) v += s.shield.value;
   }
+  return v;
+}
+
+/** まもりを かける。すでに ついているなら 強いほうを のこす */
+function grantShield(holder, effect) {
+  const now = holder.shield;
+  if (now && now.value > effect.value) { now.turns = Math.max(now.turns, effect.turns); return; }
+  holder.shield = { value: effect.value, turns: effect.turns };
+}
+
+/** 自分のターンが 来るたびに まもりを 1へらす */
+function tickShield(holder) {
+  if (!holder.shield) return;
+  holder.shield.turns--;
+  if (holder.shield.turns <= 0) {
+    holder.shield = null;
+    log(`${holder.name || sideName(holder)}の まもりが きれた`);
+  }
+}
+
+/** 使った どうぐを ランダムに ひろいなおす */
+function salvageItem(side, count) {
+  let got = 0;
+  for (let i = 0; i < count; i++) {
+    if (!side.usedItems.length) break;
+    if (side.hand.length >= HAND_MAX) { log("手札が いっぱいだった…"); break; }
+    const at = Math.floor(Math.random() * side.usedItems.length);
+    const [id] = side.usedItems.splice(at, 1);
+    side.hand.push(id);
+    got++;
+    log(`「${CARD_MAP[id].name}」を ひろいなおした！`);
+  }
+  if (!got) log("ひろえる どうぐが なかった…");
+  else if (side.isPlayer) sortHand(side, CARD_MAP);
+}
+
+function dealDamage(target, amount, opt) {
+  // まもりで へらす（毒は まもりを すりぬける）
+  const cut = (opt && opt.ignoreShield) ? 0 : shieldOf(target);
+  const dmg = Math.max(0, amount - cut);
+  if (cut > 0 && dmg < amount) floatNum(target, `まもり -${amount - dmg}`, "heal");
+  if (dmg === 0) return;
+
+  target.hp -= dmg;
+  floatNum(target, `${dmg}`, "dmg");
+  shakeEl(isLeader(target) ? leaderEl(target) : unitEl(target));
 }
 
 function healTarget(target, amount) {
@@ -364,6 +465,21 @@ function doAttack(attacker, target) {
     healTarget(attacker, dealt);
     if (attacker.hp > before) log(`「${attacker.name}」は ${attacker.hp - before} かいふくした！`);
   }
+
+  // プリーストエルフ：攻撃するたび いちばん 傷ついた なかまを 回復する
+  if (attacker.healOnAttack && attacker.hp > 0) {
+    const mine = sideOf(attacker);
+    const hurt = allUnits(mine).filter(u => u.hp < u.maxHp)
+                   .sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
+    const who = hurt || (mine.hp < START_HP ? mine : null);
+    if (who) {
+      const before = who.hp;
+      healTarget(who, attacker.healOnAttack);
+      if (who.hp > before) {
+        log(`「${attacker.name}」が ${who.name || sideName(mine)}を ${who.hp - before} かいふくした！`);
+      }
+    }
+  }
   scheduleCleanup();
 }
 
@@ -421,7 +537,9 @@ function onCardClick(idx) {
 
 /** 対象を えらばなくていい効果か */
 function needsNoTarget(e) {
-  return e.target === "enemyAll" || e.target === "allyAll" || e.target === "self";
+  return e.target === "enemyAll" || e.target === "allyAll"
+      || e.target === "self"     || e.target === "allySelf"
+      || e.target === "enemyFrozen";
 }
 
 function onSlotClick(row, idx) {
@@ -432,7 +550,7 @@ function onSlotClick(row, idx) {
   const cardId = G.player.hand[handIdx];
   const c = CARD_MAP[cardId];
 
-  G.player.mp -= c.cost;
+  G.player.mp -= costOf(G.player, cardId);
   G.player.hand.splice(handIdx, 1);
   const unit = summon(G.player, cardId, row, idx);
 
@@ -442,8 +560,9 @@ function onSlotClick(row, idx) {
   if (c.effect) {
     const e = c.effect;
     if (e.target === "enemyAll")     { applyEffect(e, allUnits(G.enemy), G.player); render(); return; }
+    if (e.target === "enemyFrozen")  { applyEffect(e, frozenUnits(G.player), G.player); render(); return; }
     if (e.target === "allyAll")      { applyEffect(e, allUnits(G.player), G.player); render(); return; }
-    if (e.target === "self")         { applyEffect(e, [], G.player); render(); return; }
+    if (e.target === "self" || e.target === "allySelf") { applyEffect(e, [], G.player); render(); return; }
     if (e.target === "enemyLane") {
       if (candidateLanes(G.player).length > 0) {
         G.mode = "target";
@@ -456,7 +575,7 @@ function onSlotClick(row, idx) {
       }
     } else if (effectCandidates(e, G.player).length > 0) {
       G.mode = "target";
-      G.pending = { effect: e, fromHand: false, source: unit };
+      G.pending = { effect: e, fromHand: false, source: unit, left: e.times || 1 };
     }
   }
   render();
@@ -465,17 +584,19 @@ function onSlotClick(row, idx) {
 function castSpell(handIdx, target) {
   const cardId = G.player.hand[handIdx];
   const c = CARD_MAP[cardId];
-  G.player.mp -= c.cost;
+  G.player.mp -= costOf(G.player, cardId);
   G.player.hand.splice(handIdx, 1);
+  if (c.type === "item") G.player.usedItems.push(cardId);   // サルベージで 拾えるように
   log(`${sideName(G.player)}は「${c.name}」を ${c.type === "item" ? "つかった" : "となえた"}！`);
 
   const e = c.effect;
-  if (e.target === "enemyLane")     applyLaneEffect(e, G.enemy, target);
-  else if (e.target === "enemyRow") applyRowEffect(e, G.enemy, target);
-  else if (e.target === "enemyAll") applyEffect(e, allUnits(G.enemy), G.player);
-  else if (e.target === "allyAll")  applyEffect(e, allUnits(G.player), G.player);
-  else if (e.target === "self")     applyEffect(e, [], G.player);
-  else                              applyEffect(e, [target], G.player);
+  if (e.target === "enemyLane")        applyLaneEffect(e, G.enemy, target);
+  else if (e.target === "enemyRow")    applyRowEffect(e, G.enemy, target);
+  else if (e.target === "enemyAll")    applyEffect(e, allUnits(G.enemy), G.player);
+  else if (e.target === "enemyFrozen") applyEffect(e, frozenUnits(G.player), G.player);
+  else if (e.target === "allyAll")     applyEffect(e, allUnits(G.player), G.player);
+  else if (e.target === "self" || e.target === "allySelf") applyEffect(e, [], G.player);
+  else                                 applyEffect(e, [target], G.player);
   clearPick();
 }
 
@@ -508,10 +629,30 @@ function onTargetClick(target) {
   }
   if (G.mode === "target" && G.pending) {
     if (G.pending.lane) return;   // レーン選択は onLaneClick で処理
-    if (!effectCandidates(G.pending.effect, G.player).includes(target)) return;
+    if (!pendingTargets().includes(target)) return;
     if (G.pending.fromHand) castSpell(G.pickedCard, target);
-    else { applyEffect(G.pending.effect, [target], G.player); clearPick(); }
+    else {
+      applyEffect(G.pending.effect, [target], G.player);
+      // ゆきおんなの「敵2体を」のように 何回か えらぶ 効果は のこりを かぞえる
+      const left = (G.pending.left || 1) - 1;
+      if (left > 0 && pendingTargets().length > 0) {
+        G.pending.left = left;
+        render();
+      } else clearPick();
+    }
   }
+}
+
+/**
+ * いま えらべる 対象。
+ * 何回か えらぶ 凍結は、もう こおった子を のぞく（同じ子を 2回 えらべない）
+ */
+function pendingTargets() {
+  if (!G.pending) return [];
+  const e = G.pending.effect;
+  const list = effectCandidates(e, G.player);
+  if (e.kind === "freeze" && (e.times || 1) > 1) return list.filter(u => !u.frozen);
+  return list;
 }
 
 function onLeaderClick(side) {
@@ -609,12 +750,26 @@ function aiIsWorthPlaying(E, c) {
       const t = CARD_MAP[id];
       if (e.filter === "unit"  && t.type !== "unit")  return false;
       if (e.filter === "spell" && t.type === "unit") return false;
+      if (e.filter === "item"  && t.type !== "item") return false;
       if (e.maxCost !== undefined && t.cost > e.maxCost) return false;
       return true;
     });
   }
   // こおらせるのは これから殴ってきそうな相手がいるときだけ
   if (e.kind === "freeze")  return allUnits(G.player).some(u => u.atk > 0 && !u.frozen);
+  // 毒は 長生きしそうな 相手に かけたい
+  if (e.kind === "poison")  return allUnits(G.player).some(u => !u.poison && u.hp >= 2);
+  // まもりは 守るものが あるときだけ
+  if (e.kind === "shield")  return allUnits(E).length > 0 || E.hp < START_HP;
+  // とくぎ封じは 相手が まだ 手札を 持っているとき
+  if (e.kind === "silence") return G.player.hand.length > 0;
+  // ねびきは そのターンに 出せる どうぐが あってこそ
+  if (e.kind === "discount") {
+    return E.hand.some(id => {
+      const t = CARD_MAP[id];
+      return t.type === "item" && t.cost > 0;
+    });
+  }
   return true;
 }
 
@@ -675,8 +830,9 @@ function aiChooseCard(playable) {
 function aiPlayCard(pick) {
   const E = G.enemy;
   const c = pick.c;
-  E.mp -= c.cost;
+  E.mp -= costOf(E, c.id);
   E.hand.splice(pick.i, 1);
+  if (c.type === "item") E.usedItems.push(c.id);
 
   const resolve = (e) => {
     if (e.target === "enemyLane") {
@@ -687,12 +843,18 @@ function aiPlayCard(pick) {
       const row = aiChooseRow(e);
       if (row !== null) applyRowEffect(e, G.player, row);
     }
-    else if (e.target === "enemyAll") applyEffect(e, allUnits(G.player), E);
-    else if (e.target === "allyAll")  applyEffect(e, allUnits(E), E);
-    else if (e.target === "self")     applyEffect(e, [], E);
+    else if (e.target === "enemyAll")    applyEffect(e, allUnits(G.player), E);
+    else if (e.target === "enemyFrozen") applyEffect(e, frozenUnits(E), E);
+    else if (e.target === "allyAll")     applyEffect(e, allUnits(E), E);
+    else if (e.target === "self" || e.target === "allySelf") applyEffect(e, [], E);
     else {
-      const t = aiChooseEffectTarget(e);
-      if (t) applyEffect(e, [t], E);
+      // 「敵2体を凍結」のように 何回か えらぶ 効果は そのぶん くりかえす
+      const times = e.times || 1;
+      for (let k = 0; k < times; k++) {
+        const t = aiChooseEffectTarget(e);
+        if (!t) break;
+        applyEffect(e, [t], E);
+      }
     }
   };
 
@@ -762,6 +924,21 @@ function aiChooseEffectTarget(effect) {
     const ready = allUnits(G.enemy).filter(u => !u.sick);
     return (ready.length ? ready : allUnits(G.enemy)).sort((a, b) => b.atk - a.atk)[0] || null;
   }
+  if (effect.kind === "freeze") {
+    // まだ こおっていない、いちばん 強い子から 止める
+    const foes = allUnits(G.player).filter(u => !u.frozen && u.atk > 0);
+    return foes.sort((a, b) => b.atk - a.atk)[0] || allUnits(G.player)[0] || null;
+  }
+  if (effect.kind === "poison") {
+    // かたくて 長生きしそうな 相手ほど 毒が きく
+    const foes = allUnits(G.player).filter(u => !u.poison);
+    return foes.sort((a, b) => b.hp - a.hp)[0] || null;
+  }
+  if (effect.kind === "shield") {
+    // いちばん 前で 殴られそうな 子を まもる
+    const mine = allUnits(G.enemy);
+    return mine.sort((a, b) => b.atk - a.atk)[0] || null;
+  }
   return null;
 }
 
@@ -808,7 +985,7 @@ function currentTargets() {
   if (G.mode === "attack" && G.pickedUnit) return legalAttackTargets(G.player);
   if (G.mode === "target" && G.pending) {
     if (G.pending.lane) return [];   // レーン選択中は 個別の対象は光らせない
-    return effectCandidates(G.pending.effect, G.player);
+    return pendingTargets();
   }
   return [];
 }
@@ -854,6 +1031,17 @@ function renderLeaders() {
   [["player-leader", "player-guard", G.player], ["enemy-leader", "enemy-guard", G.enemy]].forEach(([id, gid, side]) => {
     document.getElementById(id).classList.toggle("targetable", targets.includes(side));
     document.getElementById(gid).hidden = !leaderBlocked(side);
+  });
+
+  // 味方全体に かかっている まもりと とくぎ封じを リーダー欄に 出す
+  [["player", G.player], ["enemy", G.enemy]].forEach(([who, side]) => {
+    const ward = document.getElementById(`${who}-ward`);
+    const mute = document.getElementById(`${who}-mute`);
+    if (ward) {
+      ward.hidden = !side.shield;
+      if (side.shield) ward.textContent = `🛡 ダメージ-${side.shield.value}（あと${side.shield.turns}）`;
+    }
+    if (mute) mute.hidden = !side.noSpell;
   });
 }
 
@@ -932,7 +1120,14 @@ function buildUnit(unit, side, row, i, targets) {
   const now = Math.max(0, unit.hp);
   const hpText = hurt ? `${now}<span class="max">/${unit.maxHp}</span>` : `${now}`;
 
+  // 状態異常の しるし（こおり・毒・まもり）
+  const marks =
+    (unit.frozen ? `<span class="mark ice" title="こおり">❄️</span>` : "") +
+    (unit.poison ? `<span class="mark poison" title="どく">🟣</span>` : "") +
+    (unit.shield ? `<span class="mark ward" title="まもり">🛡️</span>` : "");
+
   el.innerHTML =
+    (marks ? `<div class="unit-marks">${marks}</div>` : "") +
     `<div class="unit-emoji">${unit.emoji}</div>` +
     `<div class="unit-name${nameCls}">${unit.name}</div>` +
     `<div class="unit-stats">` +
@@ -975,8 +1170,12 @@ function renderHand() {
     // 23文字を こえたら 少しだけ 小さくする
     const size = txt.length > 34 ? " xlong" : txt.length > 23 ? " long" : "";
 
+    // 革手袋や こおりで 安くなっていたら 数字を 青くして 知らせる
+    const now = costOf(G.player, cardId);
+    const costCls = "card-cost" + (now < c.cost ? " cut" : "");
+
     el.innerHTML =
-      `<div class="card-cost">${c.cost}</div>` +
+      `<div class="${costCls}">${now}</div>` +
       `<div class="card-art">${c.emoji}</div>` +
       `<div class="card-name">${c.name}</div>` +
       `<div class="card-text${size}">${txt}</div>` + foot;
@@ -985,7 +1184,7 @@ function renderHand() {
       if (longPressed) { longPressed = false; return; }   // 長おしの直後は 出さない
       onCardClick(idx);
     };
-    bindZoom(el, () => ({ card: c }));
+    bindZoom(el, () => ({ card: c, opts: { cost: now } }));
     handEl.appendChild(el);
   });
 }
@@ -1057,7 +1256,7 @@ let longPressed = false;      // 長おしで開いた直後の タップを 打
 
 /** 手札のカード / 盤上のユニット を 大きく表示する */
 function showZoom(card, opts = {}) {
-  const { foe = false, atk = card.atk, hp = card.hp, maxHp = card.hp } = opts;
+  const { foe = false, atk = card.atk, hp = card.hp, maxHp = card.hp, cost = card.cost } = opts;
   const el = document.getElementById("zoom-card");
   el.className = "zoom-card"
     + (card.type === "spell" ? " spell" : card.type === "item" ? " item" : "")
@@ -1073,7 +1272,7 @@ function showZoom(card, opts = {}) {
     : `<div class="zoom-foot"><div class="zoom-tag">${card.type === "item" ? "どうぐ" : "とくぎ"}</div></div>`;
 
   el.innerHTML =
-    `<div class="zoom-cost">${card.cost}</div>` +
+    `<div class="zoom-cost${cost < card.cost ? " cut" : ""}">${cost}</div>` +
     `<div class="zoom-art">${card.emoji}</div>` +
     `<div class="zoom-name">${card.name}</div>` +
     `<div class="zoom-text">${card.text || "　"}</div>` + foot +
@@ -1299,7 +1498,19 @@ const MANUAL = [
   {
     title: "状態異常",
     rules: [
-      ["こおり", "❄️が ついた ユニットは <b>つぎの じぶんのターンまで こうげきできない</b>。"],
+      ["こおり", "❄️が ついた ユニットは <b>つぎの じぶんのターンまで こうげきできない</b>。1回 やすんだら とける。"],
+      ["どく",   "🟣が ついた ユニットは <b>じぶんのターンの はじめに 1ダメージ</b>。<b>とけない</b>ので、ほうっておくと じわじわ 死ぬ。まもりでは 防げない。"],
+      ["まもり", "🛡️が ついている間は <b>うけるダメージが へる</b>。じぶんのターンが 来るたびに のこりが 1へる。かさねがけしたら <b>強いほうが のこる</b>。"],
+      ["とくぎ ふうじ", "🤫の 間は <b>とくぎカードが 出せない</b>。どうぐと ユニットは ふつうに 出せる。1ターンで とける。"],
+    ],
+  },
+  {
+    title: "カードの 種類",
+    rules: [
+      ["ユニット", "盤面に よびだして たたかう。よびだした ターンは こうげきできない（青いカード）。"],
+      ["とくぎ",   "ガードと ブロックを <b>無視</b>して 好きな相手を ねらえる（むらさきのカード）。"],
+      ["どうぐ",   "手札・MP・味方に はたらきかける（みどりのカード）。<b>とくぎ ふうじ</b>の 影響を うけない。"],
+      ["コスト",   "青くなっている 数字は <b>安くなっている</b>しるし（革手袋や こおりの 数で 変わる）。"],
     ],
   },
 ];

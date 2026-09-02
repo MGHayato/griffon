@@ -232,6 +232,16 @@
     color: var(--mint); background: rgba(111,224,160,.14);
     font-size: 12px; letter-spacing: 0;
   }
+  /* 味方全体に かかっている まもり */
+  .badge.ward {
+    color: #ffd98a; background: rgba(242,193,78,.16);
+    font-size: 12px; letter-spacing: 0;
+  }
+  /* とくぎ ふうじ */
+  .badge.mute {
+    color: #c9a6ff; background: rgba(157,124,198,.22);
+    font-size: 12px; letter-spacing: 0;
+  }
   .badge[hidden] { display: none; }
 
   .mp-pips { display: flex; gap: 2px; }
@@ -319,6 +329,21 @@
   .unit.foe {
     background: linear-gradient(165deg, #bd4a68 0%, #6d2038 52%, var(--crimson-dk) 100%);
     border-color: #7a2540;
+  }
+  /* 状態異常の しるし（こおり・どく・まもり）。左上に たてに ならぶ */
+  .unit-marks {
+    position: absolute; top: 1px; left: 1px; z-index: 4;
+    display: flex; flex-direction: column; gap: 1px;
+    pointer-events: none;
+  }
+  .mark {
+    font-size: 11px; line-height: 1;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,.9));
+  }
+  .mark.poison { animation: poisonPulse 1.6s infinite; }
+  @keyframes poisonPulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: .45; }
   }
   .unit-emoji { font-size: 31px; line-height: 1; filter: drop-shadow(0 2px 3px rgba(0,0,0,.65)); }
   .unit-name {
@@ -579,6 +604,12 @@
     font-size: 19px; color: #fff;
     text-shadow: 0 1px 2px #000;
     box-shadow: 0 2px 5px rgba(0,0,0,.6);
+  }
+  /* 安くなっている コストは みどりに 光らせる */
+  .card-cost.cut, .zoom-cost.cut {
+    background: radial-gradient(circle at 35% 30%, #b9ffd8, #24a86a 58%, #0d5c39);
+    border-color: #d9ffe9;
+    box-shadow: 0 0 10px rgba(111,224,160,.8), 0 2px 5px rgba(0,0,0,.6);
   }
   .card-art {
     height: 38px; margin-top: 11px; flex-shrink: 0;

@@ -92,16 +92,41 @@ export function canAttack(unit) {
   return unit.hp > 0 && !unit.sick && !unit.attacked && !unit.frozen && unit.atk > 0;
 }
 
+/** こおっている 敵ユニット */
+export function frozenUnits(side) {
+  return allUnits(opponentOf(side)).filter(u => u.frozen);
+}
+
+/**
+ * そのカードの いまのコスト。
+ * ・どうぐの ねびき（革手袋）
+ * ・こおっている敵の数だけ 安くなる（スノウスライム など）
+ * どちらも 0より 下には ならない。
+ */
+export function costOf(side, cardId) {
+  const c = CARD_MAP[cardId];
+  let cost = c.cost;
+  if (c.frostCost) cost -= c.frostCost * frozenUnits(side).length;
+  if (c.type === "item" && side.itemDiscount) cost -= side.itemDiscount;
+  return Math.max(0, cost);
+}
+
 export function canPlay(side, cardId) {
   const c = CARD_MAP[cardId];
-  if (side.mp < c.cost) return false;
+  if (side.mp < costOf(side, cardId)) return false;
   if (c.type === "unit") return hasFreeSlot(side);
+
+  // シャラプーを うけている間は とくぎだけ 出せない（どうぐは 使える）
+  if (c.type === "spell" && side.noSpell) return false;
 
   const e = c.effect;
   if ((e.target === "enemyUnit" || e.target === "enemyAll") && allUnits(opponentOf(side)).length === 0) return false;
   if ((e.target === "allyUnit"  || e.target === "allyAll")  && allUnits(side).length === 0) return false;
   if (e.target === "enemyLane" && candidateLanes(side).length === 0) return false;
   if (e.target === "enemyRow"  && candidateRows(side).length === 0) return false;
+  if (e.target === "enemyFrozen" && frozenUnits(side).length === 0) return false;
+  // 拾うものが 無いのに サルベージは 出せない
+  if (e.kind === "salvage" && !(side.usedItems && side.usedItems.length)) return false;
   return true;
 }
 
@@ -112,6 +137,7 @@ export function effectCandidates(effect, side) {
     case "enemyUnit": return allUnits(foe);
     case "enemyAny":  return [...allUnits(foe), foe];   // リーダーも ねらえる
     case "enemyAll":  return allUnits(foe);
+    case "enemyFrozen": return frozenUnits(side);
     case "allyUnit":  return allUnits(side);
     case "allyAll":   return allUnits(side);
     case "allyAny":   return [...allUnits(side), side];

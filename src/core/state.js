@@ -118,6 +118,10 @@ export function makeSide(isPlayer, deckId) {
     front: [null, null, null],
     back:  [null, null, null],
     fatigue: 0,
+    usedItems: [],        // これまで 使った どうぐ（サルベージが 拾いなおす）
+    itemDiscount: 0,      // このターン だけの どうぐの ねびき
+    shield: null,         // { value, turns } うけるダメージを へらす
+    noSpell: false,       // シャラプー中は とくぎを 出せない
   };
 }
 

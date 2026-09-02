@@ -43,14 +43,26 @@ DECK_ORDER = ["Alice", "Hansel", "Gretel", "Snow"]
 #   ここに無い名前は 効果や名前から それっぽいものを えらぶ
 # ---------------------------------------------------------------
 EMOJI = {
+    # ユニット
     "スライム": "🟦", "ゴブリン": "👺", "あばれウルフ": "🐺", "ゴースト": "👻",
     "吸血コウモリ": "🦇", "アーチャーエルフ": "🏹", "オーク": "🐗",
     "ヒールスライム": "🟩", "ダッシュうさぎ": "🐇", "ミノタウロス": "🐂",
     "ゴーレム": "🗿", "ドラゴン": "🐉",
-    "フレア": "🔥", "鉄の剣": "🗡️", "聖水": "💧", "ヒール": "✨",
-    "角笛": "📯", "ゆうきの歌": "🎵", "つむじ風": "💨", "サンダー": "⚡",
-    "ストーム": "🌪️", "フリーズ": "❄️", "ヘイル": "❄️", "スラッシュ": "⚔️",
-    "探索": "🔍",
+    "真冬のゴブリン": "🧊", "ぬすっとゴブリン": "🎒", "スノウスライム": "⬜",
+    "ゆきおとこ": "🦍", "ゆきおんな": "👘", "ロケットうさぎ": "🚀",
+    "プリーストエルフ": "🙏", "ウィンタードラゴン": "🐲",
+    # とくぎ
+    "フレア": "🔥", "ヒール": "✨", "ゆうきの歌": "🎵", "つむじ風": "💨",
+    "サンダー": "⚡", "ストーム": "🌪️", "フリーズ": "❄️", "スラッシュ": "⚔️",
+    "ヘイル": "🌨️", "サルベージ": "♻️", "アイドルソング": "🎤", "シャラプー": "🤫",
+    "フロストバイト": "🧊", "ハイヒール": "💚", "ヴェール": "🛡️",
+    "メガフリーズ": "🌬️", "ブリザード": "🌨️", "メガフロスト": "💠",
+    "メガヒール": "💖", "ルミナスヴェール": "🌟",
+    # どうぐ
+    "聖水": "💧", "角笛": "📯", "探索": "🔍", "鉄の剣": "🗡️",
+    "革手袋": "🧤", "地図": "🗺️", "パンくず": "🍞", "石つぶて": "🪨",
+    "薬草": "🌿", "リンゴ": "🍎", "毒リンゴ": "🍏", "短剣": "🔪",
+    "木の盾": "🪵", "投石器": "🎯", "キャンディボム": "🍬",
 }
 
 # 名前に この語が入っていたら この絵文字（EMOJI に無いときの 予備）
@@ -76,14 +88,30 @@ FX_BY_NAME = {
 
 # 名前が 変わっても id を 保てるように、いまの名前 → id を 覚えておく
 ID_BY_NAME = {
+    # ユニット
     "スライム": "slime", "ゴブリン": "goblin", "あばれウルフ": "wolf",
     "ゴースト": "ghost", "吸血コウモリ": "vampbat", "アーチャーエルフ": "archer",
     "オーク": "orc", "ヒールスライム": "healslime", "ダッシュうさぎ": "rabbit",
     "ミノタウロス": "minotaur", "ゴーレム": "golem", "ドラゴン": "dragon",
-    "フレア": "flare", "鉄の剣": "sword", "聖水": "water", "ヒール": "heal",
-    "角笛": "horn", "ゆうきの歌": "song", "つむじ風": "whirl",
-    "サンダー": "thunder", "ストーム": "storm",
-    "フリーズ": "freeze", "ヘイル": "freeze", "スラッシュ": "slash", "探索": "search",
+    "真冬のゴブリン": "wingoblin", "ぬすっとゴブリン": "thiefgoblin",
+    "スノウスライム": "snowslime", "ゆきおとこ": "yeti", "ゆきおんな": "yukionna",
+    "ロケットうさぎ": "rocketrabbit", "プリーストエルフ": "priestelf",
+    "ウィンタードラゴン": "windragon",
+    # とくぎ
+    "フレア": "flare", "ヒール": "heal", "ゆうきの歌": "song", "つむじ風": "whirl",
+    "サンダー": "thunder", "ストーム": "storm", "フリーズ": "freeze",
+    "スラッシュ": "slash", "ヘイル": "hail", "サルベージ": "salvage",
+    "アイドルソング": "idolsong", "シャラプー": "shutup",
+    "フロストバイト": "frostbite", "ハイヒール": "highheal", "ヴェール": "veil",
+    "メガフリーズ": "megafreeze", "ブリザード": "blizzard",
+    "メガフロスト": "megafrost", "メガヒール": "megaheal",
+    "ルミナスヴェール": "lumiveil",
+    # どうぐ
+    "聖水": "water", "角笛": "horn", "探索": "search", "鉄の剣": "sword",
+    "革手袋": "glove", "地図": "map", "パンくず": "crumb", "石つぶて": "pebble",
+    "薬草": "herb", "リンゴ": "apple", "毒リンゴ": "poisonapple",
+    "短剣": "dagger", "木の盾": "woodshield", "投石器": "sling",
+    "キャンディボム": "candybomb",
 }
 
 # デッキの id（ファイル名 → ゲームのなかの id）
@@ -119,6 +147,20 @@ def parse_effect(text, is_unit):
         traits["rush"] = True
         return None, traits
 
+    m = re.search(r"攻撃するたび味方1体を" + NUM + r"回復", t.replace(" ", ""))
+    if m:
+        traits["healOnAttack"] = n(m.group(1))
+        return None, traits
+
+    # こおっている敵の数だけ 安くなる。
+    # このあとに 召喚時こうかが つづくことが あるので、文から 取りのぞいて さきへ すすむ
+    m = re.search(r"凍結している敵の数だけ\s*コスト\s*-\s*" + NUM, t)
+    if m:
+        traits["frostCost"] = n(m.group(1))
+        t = re.sub(r"凍結している敵の数だけ\s*コスト\s*-\s*[0-9０-９]+\s*[、,]?\s*", "", t)
+        if t.strip() in ("", "—", "-", "ー", "なし"):
+            return None, traits
+
     # 「死亡時：〜」は やられたときに 発動する
     death = False
     if re.match(r"^(?:死亡時|やられた時|やられたとき)\s*[:：]", t):
@@ -133,6 +175,63 @@ def parse_effect(text, is_unit):
         if death:
             eff["when"] = "death"
         return eff, traits
+
+    # --- こおり ---
+    # 「対象を凍結させる」は ダメージと セットのことが 多いので さきに 見る
+    m = re.search(r"敵(?:ユニット)?全体に" + NUM + r"ダメージ対象を凍結させる", flat)
+    if m:
+        return done({"kind": "freeze", "value": n(m.group(1)), "target": "enemyAll"})
+
+    m = re.search(r"(?:たて|縦)(?:一|1|１)列に" + NUM + r"ダメージ対象を凍結させる", flat)
+    if m:
+        return done({"kind": "freeze", "value": n(m.group(1)), "target": "enemyLane"})
+
+    m = re.search(r"(?:よこ|横)(?:一|1|１)列に" + NUM + r"ダメージ対象を凍結させる", flat)
+    if m:
+        return done({"kind": "freeze", "value": n(m.group(1)), "target": "enemyRow"})
+
+    m = re.search(r"敵(?:ユニット)?1体に" + NUM + r"ダメージ(?:対象を)?凍結させる", flat)
+    if m:
+        return done({"kind": "freeze", "value": n(m.group(1)), "target": "enemyUnit"})
+
+    # ダメージ なしで こおらせるだけ。「敵2体を」なら 2回 えらぶ
+    m = re.search(r"敵(?:ユニット)?" + NUM + r"体を凍結させる", flat)
+    if m:
+        return done({"kind": "freeze", "value": 0, "target": "enemyUnit", "times": n(m.group(1))})
+
+    # こおっている敵だけを まとめて 撃つ
+    m = re.search(r"凍結(?:状態)?の?敵(?:全員|全体)に" + NUM + r"ダメージ", flat)
+    if m:
+        return done({"kind": "damage", "value": n(m.group(1)), "target": "enemyFrozen"})
+
+    # --- 毒 ---
+    if re.search(r"敵(?:ユニット)?1体を毒(?:状態に)?する", flat):
+        return done({"kind": "poison", "target": "enemyUnit"})
+
+    # --- うけるダメージを へらす まもり ---
+    m = re.search(NUM + r"ターンの間味方全体が受けるダメージ-" + NUM, flat)
+    if m:
+        return done({"kind": "shield", "value": n(m.group(2)),
+                     "turns": n(m.group(1)), "target": "allySelf"})
+
+    m = re.search(NUM + r"ターンの間味方(?:ユニット)?1体が受けるダメージ-" + NUM, flat)
+    if m:
+        return done({"kind": "shield", "value": n(m.group(2)),
+                     "turns": n(m.group(1)), "target": "allyUnit"})
+
+    # --- とくぎ封じ ---
+    if re.search(r"次のターン敵は(?:とくぎ|特技)を使えない", flat):
+        return done({"kind": "silence", "target": "self"})
+
+    # --- どうぐの ねびき ---
+    m = re.search(r"このターン中(?:どうぐ|道具)のコスト-" + NUM, flat)
+    if m:
+        return done({"kind": "discount", "value": n(m.group(1)), "target": "self"})
+
+    # --- 使った どうぐを ひろいなおす ---
+    m = re.search(r"使った(?:どうぐ|道具)をランダムに" + NUM + r"枚手札に加える", flat)
+    if m:
+        return done({"kind": "salvage", "value": n(m.group(1)), "target": "self"})
 
     # --- ダメージ ---
     m = re.search(r"敵(?:ユニット)?全体に" + NUM + r"ダメージ", flat)
@@ -165,17 +264,22 @@ def parse_effect(text, is_unit):
         return done({"kind": "damage", "value": n(m.group(1)), "target": "enemyAny"})
 
     # --- 回復 ---
-    m = re.search(r"味方1体を" + NUM + r"回復", flat)
+    m = re.search(r"味方(?:ユニット)?全体の?HPを" + NUM + r"回復", flat)
     if m:
+        return done({"kind": "heal", "value": n(m.group(1)), "target": "allyAll"})
+
+    m = re.search(r"味方(?:ユニット)?1体を" + NUM + r"回復", flat)
+    if m:
+        # とくぎ・どうぐなら リーダーも えらべる。ユニットの 召喚時こうかは 仲間だけ
         return done({"kind": "heal", "value": n(m.group(1)),
                      "target": "allyUnit" if is_unit else "allyAny"})
 
     # --- 強化 ---
-    m = re.search(r"味方全体を\+?" + NUM + r"/\+?" + NUM, flat)
+    m = re.search(r"味方(?:ユニット)?全体を\+?" + NUM + r"/\+?" + NUM, flat)
     if m:
         return done({"kind": "buff", "value": n(m.group(1)), "target": "allyAll"})
 
-    m = re.search(r"味方1体の攻撃力を" + NUM + r"上げる", flat)
+    m = re.search(r"味方(?:ユニット)?1体の攻撃力を?\+?" + NUM + r"(?:上げる)?", flat)
     if m:
         return done({"kind": "buffAtk", "value": n(m.group(1)), "target": "allyUnit"})
 
@@ -198,6 +302,11 @@ def parse_effect(text, is_unit):
     if m:
         return done({"kind": "search", "value": n(m.group(1)),
                      "target": "self", "filter": "spell"})
+
+    m = re.search(r"(?:デッキ|やまふだ|山札)から(?:どうぐ|道具)を" + NUM + r"枚手札に加える", flat)
+    if m:
+        return done({"kind": "search", "value": n(m.group(1)),
+                     "target": "self", "filter": "item"})
 
     m = re.search(r"(?:デッキ|やまふだ|山札)(?:の上)?から" + NUM + r"枚引く", flat)
     if m:
@@ -387,7 +496,7 @@ def main():
         parts = [f'kind:"{e["kind"]}"']
         if "value" in e:   parts.append(f'value:{e["value"]}')
         parts.append(f'target:"{e["target"]}"')
-        for k in ("filter", "maxCost", "when", "fx"):
+        for k in ("filter", "maxCost", "turns", "times", "when", "fx"):
             if k in e:
                 v = e[k]
                 parts.append(f'{k}:{v}' if isinstance(v, int) else f'{k}:"{v}"')
@@ -417,6 +526,10 @@ def main():
             for key in ("lifesteal", "rush"):
                 if c["traits"].get(key):
                     tail.append(f"\n    {key}:true")
+            # 数を もつ もちもの（回復量・ねびきの はば）
+            for key in ("healOnAttack", "frostCost"):
+                if c["traits"].get(key):
+                    tail.append(f'\n    {key}:{c["traits"][key]}')
             L.append(head + ("," + ",".join(tail) if tail else "") + " },")
         L.append("")
 
