@@ -330,27 +330,27 @@
   <div class="eyebrow">GRIFFON / GRID FORMATION</div>
   <h1>オンライン対戦とGoogle Play配信までの道のり</h1>
   <p class="lede">
-    CPU対戦のWebゲームから、友達とのオンライン対戦、そしてGoogle Playでの配信へ。
-    全部を一度にやると必ず作り直しが出るので、<strong>順番に意味がある</strong>形で並べた。
+    CPU対戦のWebゲームから、ゲームの充実、友達とのオンライン対戦、
+    そしてGoogle Playでの配信へ。全部を一度にやると必ず作り直しが出るので、
+    <strong>順番に意味がある</strong>形で並べた。
   </p>
 
   <div class="now">
     <div class="now-label">いまここ</div>
     <ul>
-      <li>CPU対戦で最後まで遊べる。カード20種40枚、3レーン盤面</li>
-      <li>Git・Vite・Vitest の開発環境ができた（保存すると即反映、テストが走る）</li>
-      <li>ルールの読み取りを <code>core/</code> に分離ずみ。テスト18件が守っている</li>
-      <li><strong>自分のURLで公開できた</strong> ── <code>mghayato.github.io/griffon/</code></li>
+      <li><strong>スマホアプリとして遊べる</strong> ── <code>mghayato.github.io/griffon/</code></li>
+      <li>ホーム画面に追加すると 全画面・縦固定で起動。電波がなくても動く</li>
       <li><code>git push</code> するだけで テスト → ビルド → 公開まで自動で走る</li>
+      <li>カード20種40枚。マニュアル、カード拡大表示、手札のコスト順ならべ替えも入った</li>
+      <li>ルールの読み取りは <code>core/</code> に分離ずみ。テスト26件が守っている</li>
     </ul>
   </div>
 
   <div class="now" style="border-color:var(--accent); box-shadow:inset 0 0 0 2px var(--card), 0 2px 0 var(--accent);">
     <div class="now-label" style="color:var(--accent)">つぎの一手</div>
     <ul>
-      <li><strong>PWA化</strong>（フェーズ2の残り）── アイコン・全画面起動・オフライン・向き固定</li>
-      <li>ゲームの中身には触らないので、<strong>カードを増やす前にやる方が得</strong></li>
-      <li>終われば友達に「アプリだよ」と渡せる。Google Playのテスター集めの助走にもなる</li>
+      <li><strong>フェーズ3：ゲームを充実させる</strong>（デッキ／リーダーキャラ／プレイヤーネーム）</li>
+      <li>対人戦の前に ここをやると決めた。対戦相手ができてから中身を変えると 調整が二重になるため</li>
     </ul>
   </div>
 
@@ -367,27 +367,24 @@
     </div>
   </div>
 
-  <h2>4つのフェーズ</h2>
-  <p>
-    同じ端末を渡し合って遊ぶ段階は <em>やらないことにした</em>。最初からオンライン対戦を目指す。
-  </p>
+  <h2>5つのフェーズ</h2>
 
   <div class="timeline">
 
-    <div class="phase key" data-n="1">
+    <div class="phase" data-n="1">
       <div class="phase-head">
         <h3>土台を分ける</h3>
         <span class="tag key">半分おわった</span>
         <span class="tag free">費用なし</span>
       </div>
-      <div class="effort">目安：あとセッション2〜3回</div>
+      <div class="effort">目安：あとセッション2〜3回／<strong>フェーズ4の直前でよい</strong></div>
 
       <h4>もう終わったこと</h4>
       <ul>
         <li>Gitを入れて、いつでも巻き戻せるようにした</li>
         <li>1ファイル2200行 → Viteで分割開発・ビルドで1ファイル出力</li>
         <li>カード定義・状態・盤面の読み取りを <code>core/</code> へ切り出し</li>
-        <li>ガードとブロックのルールに テスト18件（さっそくバグを1件見つけた）</li>
+        <li>テスト26件（ガード・ブロック・手札のならべ替え）</li>
       </ul>
 
       <h4>残っていること</h4>
@@ -404,53 +401,63 @@
         <b>なぜ必要か：</b>対人戦は「2人の画面で 同じルールが 同じ結果になる」ことが大前提。
         いまはルールの計算と画面の描き換えが混ざっているので、サーバー側で同じ計算ができない。
         <br>
-        <b>実例：</b>テストが見つけた <code>laneOccupied</code> のバグは、<code>true/false</code> のはずが
-        <code>null</code> を返していた。画面の中では動くが、2人の状態を突き合わせると食い違う。
-        ああいうものが対戦では致命傷になる。
+        <b>いつやるか：</b>フェーズ3でカードやリーダーを足すと、その分も引き剥がす対象になる。
+        だから<strong>フェーズ3が済んでから、フェーズ4の直前にまとめてやる</strong>のが手戻りが少ない。
       </div>
     </div>
 
     <div class="phase" data-n="2">
       <div class="phase-head">
         <h3>自分のURLを持つ</h3>
-        <span class="tag key">半分おわった</span>
-        <span class="tag free">費用なし</span>
+        <span class="tag free">おわった</span>
       </div>
-      <div class="effort">目安：あとセッション1〜2回</div>
+      <div class="effort">完了</div>
 
-      <h4>もう終わったこと</h4>
+      <h4>やったこと</h4>
       <ul>
-        <li>GitHubの公開リポジトリを作り、GitHub Pages で配信した</li>
+        <li>GitHubの公開リポジトリから GitHub Pages で配信</li>
         <li>push すると GitHub側で テスト→ビルド→公開まで自動で走る</li>
-        <li>友達に送るURLが確定した ── <code>mghayato.github.io/griffon/</code></li>
-      </ul>
-
-      <h4>残っていること（＝つぎの一手）</h4>
-      <ul>
-        <li>PWAにする ── アイコン、全画面起動、<strong>電波なしでもCPU対戦が動く</strong></li>
-        <li>画面の向きを固定する（PWAなら指定できる）</li>
+        <li>PWA化 ── アイコン、全画面起動、縦画面固定、電波なしでも動く</li>
       </ul>
 
       <div class="payoff">
-        <b>終わると：</b>友達に送るURLが確定する。ホーム画面に追加すれば
-        <strong>アイコンから全画面で起動</strong>して、見た目はもうアプリ。
-      </div>
-      <div class="snag">
-        <b>なぜオンライン対戦より先か：</b>
-        Artifactは<strong>外部と通信できない</strong>（セキュリティ設定で禁止されている）。
-        つまりArtifactのままでは、どうやってもサーバーと繋げない。
-        自分のURLを持つことが、対戦を作るための<strong>前提条件</strong>になる。
-        <br>
-        <b>おまけに解決すること：</b>Artifactは「リンクを知る全員に公開」している間、
-        バージョンをLatestにできない仕様になっている（公開リンクの中身が勝手に変わらないための安全策）。
-        更新のたびに手で選び直す必要があるが、自分のURLなら <code>push</code> した瞬間に全員が最新になる。
-        <br>
-        <b>さらに：</b>ここで作るもの（アイコン・オフライン対応・向き固定）は、
-        そのままフェーズ4のアプリの中身になる。二度手間にならない。
+        <b>手に入ったもの：</b>友達に送るURLが確定した。
+        ホーム画面に追加すれば アイコンから全画面で起動する。
+        Artifactのバージョン固定の問題も消えた。
       </div>
     </div>
 
-    <div class="phase" data-n="3">
+    <div class="phase key" data-n="3">
+      <div class="phase-head">
+        <h3>ゲームを充実させる</h3>
+        <span class="tag key">つぎはここ</span>
+        <span class="tag free">費用なし</span>
+      </div>
+      <div class="effort">目安：セッション4〜8回（作りたい量しだい）</div>
+
+      <h4>やること</h4>
+      <ul>
+        <li><strong>プレイヤーネーム</strong> ── 名前を決められるようにする</li>
+        <li><strong>カードを増やす</strong> ── いまの20種では デッキを分けても 中身がほぼ同じになる</li>
+        <li><strong>デッキを増やす</strong> ── プリセットから選べるようにする</li>
+        <li><strong>リーダーキャラ</strong> ── デッキごとに 専用のリーダーを作る</li>
+      </ul>
+
+      <div class="payoff">
+        <b>終わると：</b>「毎回おなじ40枚」から抜け出して、選ぶ楽しみが生まれる。
+        <strong>対人戦がぐっと面白くなる</strong>。
+      </div>
+      <div class="snag">
+        <b>なぜ対人戦より先か：</b>対戦を先に作ると、カードを1枚足すたびに
+        対戦の動作も確かめる必要が出てくる。<em>中身を固めてから対戦に進む</em>ほうが早い。
+        <br>
+        <b>順番の目安：</b>プレイヤーネームは小さく独立していて、対人戦の下ごしらえにもなる。
+        カードを増やすのが先、デッキ分けはその後（材料が足りないとデッキの個性が出ない）。
+        リーダーキャラはデッキ選択画面とセットになるので いちばん最後。
+      </div>
+    </div>
+
+    <div class="phase" data-n="4">
       <div class="phase-head">
         <h3>オンライン対戦</h3>
         <span class="tag cost">サーバー代</span>
@@ -477,7 +484,7 @@
       </div>
     </div>
 
-    <div class="phase" data-n="4">
+    <div class="phase" data-n="5">
       <div class="phase-head">
         <h3>Google Play で配信</h3>
         <span class="tag cost">約4,000円＋テスター12人</span>
@@ -487,7 +494,7 @@
       <h4>やること</h4>
       <ul>
         <li>Capacitor でアプリの殻をかぶせる（中身はフェーズ2のまま使える）</li>
-        <li>アイコン、スクリーンショット、説明文、プライバシーポリシーを用意</li>
+        <li>スクリーンショット、説明文、プライバシーポリシーを用意</li>
         <li>Google Play Console に登録（初回のみ 約4,000円）</li>
         <li><strong>クローズドテスト：12人以上 × 14日連続</strong></li>
         <li>公開申請 → 審査（通常7日以内）</li>
@@ -534,9 +541,9 @@
     それでも<strong>「12人に14日間インストールしたままにしてもらう」</strong>のは楽ではない。
   </p>
   <p>
-    だから <em>フェーズ2のPWAが効いてくる</em>。
-    「14日入れっぱなしにして」と頼む前に、リンク1つで遊んでもらって面白いと思ってもらう。
-    その手応えを見てからストアに進むほうが確実だと思う。
+    <em>すでにPWAとして配れる状態にはなっている</em>ので、
+    「14日入れっぱなしにして」と頼む前に、リンク1つで遊んでもらって
+    面白いと思ってもらうことができる。フェーズ3で中身を厚くしておくほど、頼みやすくなるはず。
   </p>
 
   <h2>お金がかかるところ</h2>
@@ -550,10 +557,10 @@
         <tr><th>項目</th><th>費用</th><th>いつ</th><th>種類</th></tr>
       </thead>
       <tbody>
-        <tr><td>フェーズ1〜2</td><td class="num">0円</td><td>—</td><td>—</td></tr>
-        <tr><td>GitHub Pages</td><td class="num">0円</td><td>フェーズ2</td><td>公開リポジトリなら無料</td></tr>
-        <tr><td>サーバー</td><td class="num">0円 〜 月1,000円</td><td>フェーズ3</td><td>使った分だけ</td></tr>
-        <tr><td>Google Play 登録</td><td class="num">約4,000円</td><td>フェーズ4</td><td>初回だけ</td></tr>
+        <tr><td>フェーズ1〜3</td><td class="num">0円</td><td>—</td><td>—</td></tr>
+        <tr><td>GitHub Pages</td><td class="num">0円</td><td>済み</td><td>公開リポジトリなら無料</td></tr>
+        <tr><td>サーバー</td><td class="num">0円 〜 月1,000円</td><td>フェーズ4</td><td>使った分だけ</td></tr>
+        <tr><td>Google Play 登録</td><td class="num">約4,000円</td><td>フェーズ5</td><td>初回だけ</td></tr>
         <tr><td>独自ドメイン（任意）</td><td class="num">年1,500円ほど</td><td>いつでも</td><td>毎年</td></tr>
       </tbody>
     </table>
@@ -561,7 +568,7 @@
 
   <h2>アプリにする方法の選び方</h2>
   <p>
-    フェーズ4で <strong>Capacitor</strong> を選んだ理由は、<em>いまのコードがそのまま中身になる</em>から。
+    フェーズ5で <strong>Capacitor</strong> を選んだ理由は、<em>いまのコードがそのまま中身になる</em>から。
   </p>
 
   <div class="table-scroll">
@@ -588,29 +595,20 @@
     見た目はぜんぶ作り直しになる。グリフォンは絵文字とCSSで動く2Dカードゲームなので、
     WebViewの速度で困る場面はまず来ない。
   </p>
-  <p>
-    ただし <strong>フェーズ1をやっていれば、あとから乗り換えるのも難しくない</strong>。
-    ルールが画面から切り離してあれば、載せ替えるのは見た目だけで済む。
-  </p>
 
   <h2>あとでやること</h2>
-  <p>
-    やりたいけれど、対戦が動くまでは待つもの。順番は決めていない。
-  </p>
   <ul class="now" style="border:none;box-shadow:none;background:none;padding:0;">
-    <li><strong>デッキ4種プリセット</strong> ── 選んで戦えるようにする（note記事の課題2）</li>
-    <li><strong>リーダーキャラ</strong> ── デッキごとに専用のリーダーを作る</li>
-    <li><strong>専用カードを増やす</strong> ── デッキごとの個性を出す。いまの20種では足りない</li>
     <li><strong>App Store</strong> ── Apple は年15,000円。実機で確かめるならMacがあると安心</li>
     <li>デッキビルダー（プリセットが回ってからでいい）</li>
+    <li>スマホでの拡大表示を もう少し大きくする（保留中）</li>
     <li>課金やアイテム、商標登録、サーバー増強</li>
   </ul>
 
   <p class="note">
     この計画は決定事項じゃなくて、順番の提案。
     途中で面白い脱線が見つかったらそっちを優先していい。
-    ただし <strong>フェーズ1（土台を分ける）とフェーズ2（自分のURL）は、
-    オンライン対戦をやるなら必ず通ることになる</strong>。
+    ただし <strong>フェーズ1（土台を分ける）は、オンライン対戦をやるなら必ず通る</strong>。
+    フェーズ3でカードを足すほど作業も増えるので、フェーズ4の直前にまとめてやる想定にしてある。
   </p>
 
 </div>
