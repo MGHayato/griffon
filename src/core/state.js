@@ -3,7 +3,7 @@
    G ひとつに ぜんぶ入っている。JSONにできる形を たもつこと
    （相手に そのまま送れることが 対人戦の 前提になる）
    ========================================================= */
-import { CARDS, DECKS, START_HP } from "./cards.js";
+import { DECKS, START_HP } from "./cards.js";
 
 /** 対戦の状態。ESMの live binding なので、import 先でも最新が見える */
 export let G = null;
@@ -13,23 +13,89 @@ let uidCounter = 0;
 export function nextUid() { return ++uidCounter; }
 export function resetUid() { uidCounter = 0; }
 
-/** いま えらんでいるデッキ（まだ 選択画面は 無いので アリス固定） */
-export let currentDeckId = DECKS[0] ? DECKS[0].id : "alice";
-export function setDeck(id) {
-  if (DECKS.some(d => d.id === id)) currentDeckId = id;
-  return currentDeckId;
-}
-export function getDeck(id = currentDeckId) {
+/* =========================================================
+   デッキえらび
+   じぶんの ぶんと あいての ぶんを べつべつに 覚えておく。
+   あいては「おまかせ」も えらべる（対戦を はじめるたびに ランダム）。
+   ========================================================= */
+const DECK_KEY_ME  = "griffon.deck.me";
+const DECK_KEY_FOE = "griffon.deck.foe";
+
+/** あいてを おまかせに するときの しるし */
+export const RANDOM_DECK = "random";
+
+export function getDeck(id) {
   return DECKS.find(d => d.id === id) || DECKS[0];
 }
+
 /** 中身が 入っていて えらべるデッキ だけ返す */
 export function playableDecks() {
   return DECKS.filter(d => d.cards.length > 0);
 }
 
+function isPlayable(id) {
+  return playableDecks().some(d => d.id === id);
+}
+
+/** どれも えらべないときの さいごの よりどころ */
+function fallbackDeckId() {
+  const list = playableDecks();
+  if (list.length) return list[0].id;
+  return DECKS[0] ? DECKS[0].id : "alice";
+}
+
+/**
+ * 「おまかせ」を そのばの デッキに ときほぐす。
+ * 覚えていた デッキが 空っぽに なっていたら えらべるものに もどす。
+ */
+export function resolveDeckId(id) {
+  if (id === RANDOM_DECK) {
+    const list = playableDecks();
+    if (!list.length) return fallbackDeckId();
+    return list[Math.floor(Math.random() * list.length)].id;
+  }
+  return isPlayable(id) ? id : fallbackDeckId();
+}
+
+let myDeckId = null;
+let foeDeckId = null;
+
+function loadDeckId(key, allowRandom) {
+  let saved = null;
+  try { saved = localStorage.getItem(key); } catch { /* 使えない環境 */ }
+  if (allowRandom && saved === RANDOM_DECK) return RANDOM_DECK;
+  if (saved && isPlayable(saved)) return saved;
+  return fallbackDeckId();
+}
+
+function saveDeckId(key, id) {
+  try { localStorage.setItem(key, id); } catch { /* 保存できなくても 遊べる */ }
+}
+
+export function getMyDeckId() {
+  if (myDeckId === null) myDeckId = loadDeckId(DECK_KEY_ME, false);
+  return myDeckId;
+}
+export function getFoeDeckId() {
+  if (foeDeckId === null) foeDeckId = loadDeckId(DECK_KEY_FOE, true);
+  return foeDeckId;
+}
+
+/** じぶんの デッキを 決める。中身の 空いた デッキは えらべない */
+export function setMyDeckId(id) {
+  if (isPlayable(id)) { myDeckId = id; saveDeckId(DECK_KEY_ME, id); }
+  return getMyDeckId();
+}
+
+/** あいての デッキを 決める。こちらは「おまかせ」も 通る */
+export function setFoeDeckId(id) {
+  if (id === RANDOM_DECK || isPlayable(id)) { foeDeckId = id; saveDeckId(DECK_KEY_FOE, id); }
+  return getFoeDeckId();
+}
+
 /** デッキの中身から 山札を つくって まぜる */
-export function makeDeck(deckId = currentDeckId) {
-  const d = getDeck(deckId);
+export function makeDeck(deckId) {
+  const d = getDeck(resolveDeckId(deckId ?? getMyDeckId()));
   const deck = [];
   if (d) d.cards.forEach(([id, count]) => {
     for (let i = 0; i < count; i++) deck.push(id);
@@ -41,10 +107,14 @@ export function makeDeck(deckId = currentDeckId) {
   return deck;
 }
 
-export function makeSide(isPlayer) {
+export function makeSide(isPlayer, deckId) {
+  // 「おまかせ」は ここで ひとつに 決める。決まった id を そのまま 持たせるので、
+  // リーダーの 顔や 名前も この id から 引ける。
+  const id = resolveDeckId(deckId ?? (isPlayer ? getMyDeckId() : getFoeDeckId()));
   return {
-    isPlayer, hp: START_HP, mp: 0, maxMp: 0,
-    deck: makeDeck(), hand: [],
+    isPlayer, deckId: id,
+    hp: START_HP, mp: 0, maxMp: 0,
+    deck: makeDeck(id), hand: [],
     front: [null, null, null],
     back:  [null, null, null],
     fatigue: 0,
@@ -150,7 +220,15 @@ function savePlayerName(name) {
   try { localStorage.setItem(NAME_KEY, name); } catch { /* 保存できなくても 遊べる */ }
 }
 
-export function sideName(side) { return side.isPlayer ? getPlayerName() : "まおう"; }
+/** その がわの デッキ（顔や 名前を 引くのに つかう） */
+export function sideDeck(side) { return getDeck(side && side.deckId); }
+
+/** 名前。じぶんは よびな、あいては デッキの 名前 */
+export function sideName(side) {
+  if (side.isPlayer) return getPlayerName();
+  const d = sideDeck(side);
+  return d ? d.label : "まおう";
+}
 export function sideOf(unit)   { return unit.side === "player" ? G.player : G.enemy; }
 export function opponentOf(side) { return side.isPlayer ? G.enemy : G.player; }
 export function isLeader(t)    { return t === G.player || t === G.enemy; }

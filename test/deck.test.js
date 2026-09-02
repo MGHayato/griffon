@@ -7,7 +7,10 @@
  */
 import { describe, it, expect } from "vitest";
 import { CARDS, CARD_MAP, DECKS } from "../src/core/cards.js";
-import { makeDeck, getDeck, playableDecks, setDeck, currentDeckId } from "../src/core/state.js";
+import {
+  makeDeck, getDeck, playableDecks, makeSide, resolveDeckId,
+  getMyDeckId, getFoeDeckId, setMyDeckId, setFoeDeckId, RANDOM_DECK, sideName,
+} from "../src/core/state.js";
 
 describe("カードライブラリ", () => {
   it("id が かぶっていない", () => {
@@ -99,11 +102,54 @@ describe("山札づくり", () => {
   });
 
   it("はじめは アリスが えらばれている", () => {
-    expect(currentDeckId).toBe("alice");
+    expect(getMyDeckId()).toBe("alice");
+  });
+});
+
+describe("デッキえらび", () => {
+  it("中身の 空いたデッキは えらべない", () => {
+    const empty = DECKS.find(d => d.cards.length === 0);
+    if (!empty) return;                       // ぜんぶ 埋まったら この確認は いらない
+    setMyDeckId(empty.id);
+    expect(getMyDeckId()).not.toBe(empty.id);
   });
 
   it("知らない id を わたしても 変わらない", () => {
-    setDeck("そんなデッキない");
-    expect(getDeck().id).toBe("alice");
+    const before = getMyDeckId();
+    setMyDeckId("そんなデッキない");
+    expect(getMyDeckId()).toBe(before);
+  });
+
+  it("あいてだけ おまかせに できる", () => {
+    setFoeDeckId(RANDOM_DECK);
+    expect(getFoeDeckId()).toBe(RANDOM_DECK);
+    setMyDeckId(RANDOM_DECK);
+    expect(getMyDeckId()).not.toBe(RANDOM_DECK);
+  });
+
+  it("おまかせは えらべるデッキの どれかに なる", () => {
+    const ok = playableDecks().map(d => d.id);
+    for (let i = 0; i < 20; i++) expect(ok).toContain(resolveDeckId(RANDOM_DECK));
+  });
+
+  it("空いたデッキを わたされたら えらべるものに もどす", () => {
+    const empty = DECKS.find(d => d.cards.length === 0);
+    if (!empty) return;
+    expect(playableDecks().map(d => d.id)).toContain(resolveDeckId(empty.id));
+  });
+
+  it("じぶんと あいてで べつの デッキから 山札が できる", () => {
+    setFoeDeckId("alice");
+    const me  = makeSide(true,  "alice");
+    const foe = makeSide(false, "alice");
+    expect(me.deckId).toBe("alice");
+    expect(foe.deckId).toBe("alice");
+    expect(me.deck.length).toBe(getDeck("alice").total);
+    expect(foe.deck.length).toBe(getDeck("alice").total);
+    expect(me.deck.join(",")).not.toBe(foe.deck.join(","));   // べつべつに まざる
+  });
+
+  it("あいての 名前は デッキの 名前に なる", () => {
+    expect(sideName(makeSide(false, "alice"))).toBe("アリス");
   });
 });
