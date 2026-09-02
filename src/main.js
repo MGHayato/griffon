@@ -915,12 +915,17 @@ function buildUnit(unit, side, row, i, targets) {
 
   const nameCls = unit.name.length > 7 ? " xlong" : unit.name.length > 5 ? " long" : "";
 
+  // 傷ついているときだけ「いま/最大」を出す。満タンなら 数字ひとつ
+  const hurt = unit.hp < unit.maxHp;
+  const now = Math.max(0, unit.hp);
+  const hpText = hurt ? `${now}<span class="max">/${unit.maxHp}</span>` : `${now}`;
+
   el.innerHTML =
     `<div class="unit-emoji">${unit.emoji}</div>` +
     `<div class="unit-name${nameCls}">${unit.name}</div>` +
     `<div class="unit-stats">` +
       `<div class="orb atk">${unit.atk}</div>` +
-      `<div class="orb hp${unit.hp < unit.maxHp ? " hurt" : ""}">${Math.max(0, unit.hp)}</div>` +
+      `<div class="orb hp${hurt ? " hurt" : ""}">${hpText}</div>` +
     `</div>`;
 
   el.onclick = (ev) => {
@@ -1049,7 +1054,9 @@ function showZoom(card, opts = {}) {
   const foot = card.type === "unit"
     ? `<div class="zoom-foot">
          <div class="orb atk">${atk}</div>
-         <div class="orb hp${hp < maxHp ? " hurt" : ""}">${Math.max(0, hp)}</div>
+         <div class="orb hp${hp < maxHp ? " hurt" : ""}">${
+           hp < maxHp ? `${Math.max(0, hp)}<span class="max">/${maxHp}</span>` : Math.max(0, hp)
+         }</div>
        </div>`
     : `<div class="zoom-foot"><div class="zoom-tag">とくぎ</div></div>`;
 

@@ -225,13 +225,20 @@
     display: flex; justify-content: space-between; padding: 0 3px;
   }
   .orb {
-    width: 22px; height: 22px; border-radius: 50%;
+    width: 26px; height: 26px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     font-family: var(--font-dot);
-    font-size: 13px; font-variant-numeric: tabular-nums;
+    font-size: 15px; font-variant-numeric: tabular-nums;
     border: 2px solid #04081a;
     box-shadow: 0 1px 3px rgba(0,0,0,.6);
   }
+  /* 傷ついているときは「いま/最大」を出すので 横に のばす */
+  .orb.hp.hurt {
+    width: auto; min-width: 26px;
+    padding: 0 5px; border-radius: 13px;
+    letter-spacing: -.5px;
+  }
+  .orb.hp.hurt .max { font-size: .78em; opacity: .85; }
   .orb.atk { background: linear-gradient(160deg, #ffd97a, #c08c12); color: #2e1e00; }
   .orb.hp  { background: linear-gradient(160deg, #ff8b8b, #a81f1f); color: #fff; }
   .orb.hp.hurt { background: linear-gradient(160deg, #ffab52, #b84a00); }
@@ -453,13 +460,13 @@
     font-size: 12px; letter-spacing: 1px; color: var(--dim);
   }
   .card-cost {
-    position: absolute; top: -9px; left: -9px;
-    width: 30px; height: 30px; border-radius: 50%;
+    position: absolute; top: -10px; left: -10px;
+    width: 34px; height: 34px; border-radius: 50%;
     background: radial-gradient(circle at 35% 30%, #a8dcff, #1f6cc0 58%, #0b3a72);
     border: 2px solid #d6ecff;
     display: flex; align-items: center; justify-content: center;
     font-family: var(--font-dot);
-    font-size: 16px; color: #fff;
+    font-size: 19px; color: #fff;
     text-shadow: 0 1px 2px #000;
     box-shadow: 0 2px 5px rgba(0,0,0,.6);
   }
@@ -485,7 +492,7 @@
   .card-text.long  { font-size: 10.5px; line-height: 1.32; }
   .card-text.xlong { font-size: 9.5px; line-height: 1.28; letter-spacing: -.1px; }
   .card-foot { display: flex; justify-content: space-between; margin: 0 -2px -2px; flex-shrink: 0; }
-  .card .orb { width: 24px; height: 24px; font-size: 14px; }
+  .card .orb { width: 27px; height: 27px; font-size: 16px; }
   .spell-tag {
     width: 100%; text-align: center;
     font-family: var(--font-dot);
@@ -760,7 +767,8 @@
     .unit-name  { font-size: 10.5px; margin-top: 2px; }
     .unit-name.long  { font-size: 9.5px; }
     .unit-name.xlong { font-size: 8.6px; }
-    .orb { width: 22px; height: 22px; font-size: 12.5px; }
+    .orb { width: 25px; height: 25px; font-size: 14px; }
+    .orb.hp.hurt { min-width: 25px; padding: 0 4px; border-radius: 12px; }
     .unit.sick::after, .unit.covered::before { font-size: 13px; }
 
     .leader-row { gap: 7px; padding: 3px 7px; }
@@ -795,8 +803,8 @@
     .card { scroll-snap-align: center; width: 86px; height: clamp(140px, 19.5dvh, 158px); }
     .card-art { height: 30px; margin-top: 9px; font-size: 24px; }
     .card-name { font-size: 9.5px; margin: 2px 0 1px; }
-    .card-cost { width: 27px; height: 27px; font-size: 15px; top: -8px; left: -8px; }
-    .card .orb { width: 22px; height: 22px; font-size: 12.5px; }
+    .card-cost { width: 31px; height: 31px; font-size: 17px; top: -9px; left: -9px; }
+    .card .orb { width: 25px; height: 25px; font-size: 14px; }
   }
 
   /* 指で さわる端末では カードの浮き上がりを 切る（タップで 固まるため） */
