@@ -39,7 +39,7 @@ export const CARDS = [
     effect:{ kind:"buff", value:1, target:"allyAll", fx:"fieldGlow" } },
   { id:"horn", name:"角笛", cost:2, type:"spell", count:2, emoji:"📯", text:"デッキからコスト2以下のユニットを2枚手札に加える",
     effect:{ kind:"search", value:2, target:"self", filter:"unit", maxCost:2 } },
-  { id:"hail", name:"ヘイル", cost:2, type:"spell", count:2, emoji:"❄️", text:"敵1体に1ダメージ、対象は次のターン攻撃できない",
+  { id:"freeze", name:"フリーズ", cost:2, type:"spell", count:2, emoji:"❄️", text:"敵1体に1ダメージ、対象は次のターン攻撃できない",
     effect:{ kind:"freeze", value:1, target:"enemyUnit" } },
   { id:"slash", name:"スラッシュ", cost:2, type:"spell", count:2, emoji:"⚔️", text:"横1列に1ダメージ",
     effect:{ kind:"damage", value:1, target:"enemyRow" } },
