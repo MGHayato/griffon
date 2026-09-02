@@ -10,7 +10,7 @@ import {
 } from "./core/cards.js";
 import {
   G, setG, makeGame, nextUid, snapshot, restore,
-  sideName, sideOf, opponentOf, isLeader,
+  sideName, sideOf, opponentOf, isLeader, sortHand,
 } from "./core/state.js";
 import {
   allUnits, hasFreeSlot, laneOccupied, leaderBlocked, isCovered,
@@ -62,6 +62,7 @@ function draw(side) {
     return;
   }
   side.hand.push(id);
+  if (side.isPlayer) sortHand(side, CARD_MAP);   // コストの小さい順に そろえる
 }
 
 
@@ -214,8 +215,10 @@ function searchDeck(side, effect) {
     if (side.hand.length < HAND_MAX) { side.hand.push(id); found++; }
     else log(`手札が いっぱいで「${CARD_MAP[id].name}」は もえてしまった…`);
   }
-  if (found > 0) log(`デッキから ${found}枚 手札に くわえた！`);
-  else log("デッキに 条件に合う カードが なかった…");
+  if (found > 0) {
+    if (side.isPlayer) sortHand(side, CARD_MAP);
+    log(`デッキから ${found}枚 手札に くわえた！`);
+  } else log("デッキに 条件に合う カードが なかった…");
 }
 
 /** よこ一列（ぜんれつ or こうれつ）に はたらく効果 */

@@ -62,6 +62,22 @@ export function restore(snap) {
   Object.assign(G, JSON.parse(JSON.stringify(snap)));
 }
 
+/**
+ * 手札を コストの小さい順に そろえる。
+ *
+ * 見た目だけ 並べかえると、手札の何枚目かを 指す番号と ずれて
+ * 別のカードが 出てしまう。だから 配列そのものを 並べかえる。
+ * 引いた札が いつも同じ場所に 入るので、押しまちがいも 減る。
+ *
+ * 同じコストなら カードの種類でまとめる（同じカードが となりあう）。
+ */
+export function sortHand(side, cardMap) {
+  side.hand.sort((a, b) => {
+    const A = cardMap[a], B = cardMap[b];
+    return (A.cost - B.cost) || (A.id < B.id ? -1 : A.id > B.id ? 1 : 0);
+  });
+}
+
 export function sideName(side) { return side.isPlayer ? "ゆうしゃ" : "まおう"; }
 export function sideOf(unit)   { return unit.side === "player" ? G.player : G.enemy; }
 export function opponentOf(side) { return side.isPlayer ? G.enemy : G.player; }
