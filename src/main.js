@@ -194,6 +194,149 @@ function applyEffect(effect, targets, caster) {
 
 
 
+/* =========================================================
+   効果の解決とダメージ（ここは まだ画面に触っている。
+   つぎの段で core に引き剥がす）
+   ========================================================= */
+/** デッキから 条件に合うカードを 手札に加える */
+function searchDeck(side, effect) {
+  let found = 0;
+  for (let i = 0; i < effect.value; i++) {
+    const at = side.deck.findIndex(id => {
+      const c = CARD_MAP[id];
+      if (effect.filter === "unit"  && c.type !== "unit")  return false;
+      if (effect.filter === "spell" && c.type !== "spell") return false;
+      if (effect.maxCost !== undefined && c.cost > effect.maxCost) return false;
+      return true;
+    });
+    if (at < 0) break;
+    const [id] = side.deck.splice(at, 1);
+    if (side.hand.length < HAND_MAX) { side.hand.push(id); found++; }
+    else log(`手札が いっぱいで「${CARD_MAP[id].name}」は もえてしまった…`);
+  }
+  if (found > 0) log(`デッキから ${found}枚 手札に くわえた！`);
+  else log("デッキに 条件に合う カードが なかった…");
+}
+
+/** よこ一列（ぜんれつ or こうれつ）に はたらく効果 */
+function applyRowEffect(effect, foe, row) {
+  playFx(effect, opponentOf(foe), null, null);
+  const inner = Object.assign({}, effect);
+  delete inner.fx;
+  const targets = foe[row].filter(u => u && u.hp > 0);
+  log(`${row === "front" ? "ぜんれつ" : "こうれつ"}を なぎはらった！`);
+  applyEffect(inner, targets, opponentOf(foe));
+}
+
+/** たて一列に はたらく効果 */
+function applyLaneEffect(effect, foe, lane) {
+  playFx(effect, opponentOf(foe), null, lane);
+
+  if (effect.kind === "swap") {
+    const f = foe.front[lane], b = foe.back[lane];
+    foe.front[lane] = b;
+    foe.back[lane]  = f;
+    log(`${lane + 1}れつ目の 前後が 入れかわった！`);
+    render();
+    scheduleCleanup();
+    return;
+  }
+  const inner = Object.assign({}, effect);
+  delete inner.fx;                                 // エフェクトは もう再生ずみ
+  applyEffect(inner, laneUnits(foe, lane), opponentOf(foe));
+}
+
+function dealDamage(target, amount) {
+  if (isLeader(target)) {
+    target.hp -= amount;
+    floatNum(target, `${amount}`, "dmg");
+    shakeEl(leaderEl(target));
+  } else {
+    target.hp -= amount;
+    floatNum(target, `${amount}`, "dmg");
+    shakeEl(unitEl(target));
+  }
+}
+
+function healTarget(target, amount) {
+  const cap = isLeader(target) ? START_HP : target.maxHp;
+  const before = target.hp;
+  target.hp = Math.min(cap, target.hp + amount);
+  fxHeal(target);                                  // 回復は いつでも 緑のキラキラ
+  floatNum(target, `+${target.hp - before}`, "heal");
+}
+
+/** やられたユニットを少し遅れて盤面から消す（演出のため） */
+function scheduleCleanup() {
+  render();
+  const dying = [];
+  [G.player, G.enemy].forEach(side => {
+    ["front", "back"].forEach(row => {
+      side[row].forEach(u => { if (u && u.hp <= 0) dying.push(u); });
+    });
+  });
+  dying.forEach(u => {
+    if (u.logged) return;
+    u.logged = true;
+    log(`「${u.name}」は たおれた…`);
+
+    // 死亡時：〜 の効果を ここで 発動する
+    const card = CARD_MAP[u.id];
+    const de = card && card.effect;
+    if (de && de.when === "death") {
+      log(`「${u.name}」の 死亡時こうかが はつどうした！`);
+      const owner = sideOf(u);
+      if (de.kind === "search" || de.kind === "draw" || de.kind === "mp") {
+        applyEffect(Object.assign({}, de), [], owner);
+      } else if (de.target === "enemyAll") {
+        applyEffect(Object.assign({}, de), allUnits(opponentOf(owner)), owner);
+      } else if (de.target === "allyAll") {
+        applyEffect(Object.assign({}, de), allUnits(owner), owner);
+      }
+      // 対象を選ぶタイプの死亡時効果は、いまは 未対応（必要になったら 実装する）
+    }
+  });
+  checkGameOver();   // ← 死亡処理待ちでも 勝敗判定は必ず通す
+
+  if (dying.length === 0 || G.cleanupTimer) return;
+  G.cleanupTimer = setTimeout(() => {
+    G.cleanupTimer = null;
+    [G.player, G.enemy].forEach(side => {
+      ["front", "back"].forEach(row => {
+        side[row].forEach((u, i) => { if (u && u.hp <= 0) side[row][i] = null; });
+      });
+    });
+    render();
+  }, CLEANUP_DELAY);
+}
+
+function checkGameOver() {
+  if (G.over) return;
+  if (G.player.hp <= 0 && G.enemy.hp <= 0) finish("draw");
+  else if (G.enemy.hp <= 0)  finish("win");
+  else if (G.player.hp <= 0) finish("lose");
+}
+
+function finish(result) {
+  G.over = true;
+  G.busy = true;
+  setTimeout(() => {
+    const t = document.getElementById("modal-title");
+    const s = document.getElementById("modal-sub");
+    const r = document.getElementById("modal-rules");
+    const n = document.getElementById("modal-note");
+    if (result === "win")  { t.textContent = "しょうり！"; s.textContent = "まおうを たおした"; }
+    if (result === "lose") { t.textContent = "ぜんめつ…";  s.textContent = "ゆうしゃは たおれた"; }
+    if (result === "draw") { t.textContent = "ひきわけ";    s.textContent = "おたがい たおれた"; }
+    r.innerHTML = "";
+    n.textContent = result === "lose"
+      ? "ヒント：3レーンすべてを 埋めると リーダーを ねらわれなくなるよ。"
+      : `${G.turnCount}ターンの たたかいだった。`;
+    document.getElementById("modal-btn").textContent = "もういちど";
+    document.getElementById("overlay").classList.add("show");
+  }, 900);
+}
+
 function doAttack(attacker, target) {
   attacker.attacked = true;
   const dealt = Math.min(attacker.atk, Math.max(0, target.hp));   // 実際に あたえたダメージ
