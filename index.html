@@ -14,6 +14,9 @@
 
   <div id="rotate-tip">📱 たて画面の方が 遊びやすいよ<button id="tip-close">とじる</button></div>
 
+  <!-- メニュー（右上） -->
+  <button id="menu-btn" type="button" aria-label="メニュー">≡</button>
+
   <!-- 敵リーダー -->
   <div class="win leader-row enemy-side">
     <div class="leader-portrait" id="enemy-leader">👹</div>
@@ -61,12 +64,8 @@
   <div class="hint" id="hint"></div>
   <div class="hand-area" id="player-hand"></div>
 
-  <div class="foot">
-    <button id="name-btn">なまえ</button>
-    <button id="manual-btn">マニュアル</button>
-    <button id="restart-btn">さいしょから</button>
-    <button id="surrender-btn" class="quiet">こうさん</button>
-  </div>
+  <!-- ボタンは 右上の ≡ メニューに まとめた。
+       中身は JS が モーダルに つくる（なまえ / マニュアル / さいしょから / こうさん） -->
 </div>
 
 <div id="fx"></div>

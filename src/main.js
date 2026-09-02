@@ -1328,6 +1328,81 @@ function showTitle() {
   document.getElementById("overlay").classList.add("show");
 }
 
+/** 右上の ≡ から 開くメニュー */
+function showMenu() {
+  modalMode = "menu";
+  const box = document.getElementById("modal-rules");
+  box.innerHTML =
+    `<div class="menu-list">
+       <button type="button" class="menu-item" data-go="name"><span class="icon">👤</span>なまえ</button>
+       <button type="button" class="menu-item" data-go="manual"><span class="icon">📖</span>マニュアル</button>
+       <button type="button" class="menu-item" data-go="restart"><span class="icon">🔄</span>さいしょから</button>
+       <button type="button" class="menu-item danger" data-go="surrender"><span class="icon">🏳️</span>こうさん</button>
+     </div>`;
+
+  box.querySelectorAll(".menu-item").forEach((b) => {
+    b.onclick = () => onMenuPick(b, b.dataset.go);
+  });
+
+  document.getElementById("modal-title").textContent = "メニュー";
+  document.getElementById("modal-sub").textContent = getPlayerName();
+  document.getElementById("modal-note").textContent = "";
+  document.getElementById("modal-btn").textContent = "とじる";
+  document.getElementById("overlay").classList.add("show");
+}
+
+function closeModal() {
+  document.getElementById("overlay").classList.remove("show");
+  modalMode = "title";
+}
+
+/** メニューの こうもくを えらんだとき */
+function onMenuPick(btn, go) {
+  if (go === "name")    { showNameEditor(); return; }
+  if (go === "manual")  { showManual(); return; }
+
+  if (go === "restart") {
+    if (!btn.classList.contains("armed")) {   // まちがって 押さないよう 2段階
+      armMenuItem(btn, "ほんとうに さいしょから？");
+      return;
+    }
+    closeModal();
+    if (G && G.cleanupTimer) clearTimeout(G.cleanupTimer);
+    newGame();
+    return;
+  }
+
+  if (go === "surrender") {
+    if (!G || G.over) return;
+    if (!btn.classList.contains("armed")) {
+      armMenuItem(btn, "ほんとうに こうさんする？");
+      return;
+    }
+    closeModal();
+    log(`${getPlayerName()}は こうさんした…`);
+    G.player.hp = 0;
+    render();
+    checkGameOver();
+  }
+}
+
+/** 押しまちがい防止：1回目は 文言を変えて 確認をとる */
+let armTimer = null;
+function armMenuItem(btn, text) {
+  clearTimeout(armTimer);
+  const box = btn.closest(".menu-list");
+  box.querySelectorAll(".menu-item.armed").forEach((b) => resetMenuItem(b));
+  btn.dataset.label = btn.innerHTML;
+  btn.classList.add("armed");
+  btn.innerHTML = `<span class="icon">⚠️</span>${text}`;
+  armTimer = setTimeout(() => resetMenuItem(btn), 4000);
+}
+function resetMenuItem(btn) {
+  if (!btn.classList.contains("armed")) return;
+  btn.classList.remove("armed");
+  if (btn.dataset.label) btn.innerHTML = btn.dataset.label;
+}
+
 /** なまえを 決める画面。ゲーム中でも いつでも開ける */
 function showNameEditor() {
   modalMode = "name";
@@ -1372,6 +1447,8 @@ function showManual() {
 }
 
 document.getElementById("modal-btn").onclick = () => {
+  // メニューを とじただけのときは 何も起こさない
+  if (modalMode === "menu") { closeModal(); return; }
   // なまえ画面は 入力を 保存してから とじる
   if (modalMode === "name") {
     const input = document.getElementById("name-input");
@@ -1388,42 +1465,12 @@ document.getElementById("modal-btn").onclick = () => {
 };
 document.getElementById("player-leader").onclick = () => onLeaderClick(G.player);
 document.getElementById("enemy-leader").onclick  = () => onLeaderClick(G.enemy);
-document.getElementById("manual-btn").onclick = showManual;
-document.getElementById("name-btn").onclick = showNameEditor;
+document.getElementById("menu-btn").onclick = showMenu;
 document.getElementById("zoom").onclick = hideZoom;
 document.getElementById("tip-close").onclick = (ev) => {
   ev.stopPropagation();
   document.getElementById("rotate-tip").classList.add("closed");
 };
-document.getElementById("restart-btn").onclick = () => {
-  if (G && G.cleanupTimer) clearTimeout(G.cleanupTimer);
-  newGame();
-};
-
-// こうさん：まちがって押さないよう 2段階
-let surrenderArmed = null;
-const surrenderBtn = document.getElementById("surrender-btn");
-surrenderBtn.onclick = () => {
-  if (!G || G.over) return;
-  if (!surrenderArmed) {
-    surrenderBtn.textContent = "ほんとうに こうさんする？";
-    surrenderBtn.classList.add("armed");
-    surrenderArmed = setTimeout(resetSurrender, 4000);
-    return;
-  }
-  resetSurrender();
-  log("ゆうしゃは こうさんした…");
-  G.player.hp = 0;
-  render();
-  checkGameOver();
-};
-function resetSurrender() {
-  clearTimeout(surrenderArmed);
-  surrenderArmed = null;
-  surrenderBtn.textContent = "こうさん";
-  surrenderBtn.classList.remove("armed");
-}
-
 document.getElementById("screen").addEventListener("click", (e) => {
   if (e.target.id === "screen" || e.target.classList.contains("board") || e.target.classList.contains("slot")) {
     if (myTurn()) clearPick();
