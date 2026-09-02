@@ -78,7 +78,61 @@ export function sortHand(side, cardMap) {
   });
 }
 
-export function sideName(side) { return side.isPlayer ? "ゆうしゃ" : "まおう"; }
+/* =========================================================
+   プレイヤーネーム
+   端末のなかに 覚えておく（localStorage）。
+   サーバーは まだ無いので、PCとスマホでは 別の名前になる。
+   ========================================================= */
+export const NAME_MAX = 5;
+const NAME_KEY = "griffon.playerName";
+
+/** はじめて遊ぶときに ここから ランダムで えらぶ */
+export const DEFAULT_NAMES = [
+  "アベル", "ライアン", "セシル", "ロイド", "エルド",
+  "ガイア", "ノエル", "リオン", "テオ", "ヴァン",
+  "クレア", "ミレイ", "セラ", "リナ", "アイラ",
+  "ユーリ", "カイト", "ルーク", "シオン", "フィン",
+];
+
+/** 名前として つかえる形に そろえる（タグや 改行を 入れさせない） */
+export function cleanName(raw) {
+  return String(raw ?? "")
+    .replace(/[<>&"'`\\]/g, "")        // タグに化ける字は 落とす
+    .replace(/[\x00-\x1f\x7f]/g, "")   // 制御文字は のぞく
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, NAME_MAX);
+}
+
+function randomName() {
+  return DEFAULT_NAMES[Math.floor(Math.random() * DEFAULT_NAMES.length)];
+}
+
+let playerName = null;
+
+/** いまの名前。まだ決まっていなければ ランダムに決めて 覚える */
+export function getPlayerName() {
+  if (playerName) return playerName;
+  let saved = null;
+  try { saved = localStorage.getItem(NAME_KEY); } catch { /* 使えない環境 */ }
+  playerName = cleanName(saved) || randomName();
+  if (!saved) savePlayerName(playerName);
+  return playerName;
+}
+
+/** 名前を 決める。空なら ランダムに決め直す */
+export function setPlayerName(raw) {
+  const name = cleanName(raw) || randomName();
+  playerName = name;
+  savePlayerName(name);
+  return name;
+}
+
+function savePlayerName(name) {
+  try { localStorage.setItem(NAME_KEY, name); } catch { /* 保存できなくても 遊べる */ }
+}
+
+export function sideName(side) { return side.isPlayer ? getPlayerName() : "まおう"; }
 export function sideOf(unit)   { return unit.side === "player" ? G.player : G.enemy; }
 export function opponentOf(side) { return side.isPlayer ? G.enemy : G.player; }
 export function isLeader(t)    { return t === G.player || t === G.enemy; }

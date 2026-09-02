@@ -11,6 +11,7 @@ import {
 import {
   G, setG, makeGame, nextUid, snapshot, restore,
   sideName, sideOf, opponentOf, isLeader, sortHand,
+  getPlayerName, setPlayerName, DEFAULT_NAMES, NAME_MAX,
 } from "./core/state.js";
 import {
   allUnits, hasFreeSlot, laneOccupied, leaderBlocked, isCovered,
@@ -838,6 +839,9 @@ function renderLeaders() {
     pips.appendChild(d);
   }
 
+  // 自分の なまえ（タグを 混ぜられても textContent なので そのまま文字になる）
+  document.querySelector(".player-side .leader-name").textContent = getPlayerName();
+
   const targets = currentTargets();
   [["player-leader", "player-guard", G.player], ["enemy-leader", "enemy-guard", G.enemy]].forEach(([id, gid, side]) => {
     document.getElementById(id).classList.toggle("targetable", targets.includes(side));
@@ -1324,6 +1328,37 @@ function showTitle() {
   document.getElementById("overlay").classList.add("show");
 }
 
+/** なまえを 決める画面。ゲーム中でも いつでも開ける */
+function showNameEditor() {
+  modalMode = "name";
+  const now = getPlayerName();
+  document.getElementById("modal-rules").innerHTML =
+    `<div class="name-edit">
+       <label for="name-input">なまえ（${NAME_MAX}文字まで）</label>
+       <input id="name-input" type="text" maxlength="${NAME_MAX}"
+              autocomplete="off" spellcheck="false" value="">
+       <button type="button" id="name-random" class="name-random">🎲 おまかせ</button>
+     </div>`;
+
+  const input = document.getElementById("name-input");
+  input.value = now;                       // 値は あとから入れる（タグを 混ぜさせない）
+  document.getElementById("name-random").onclick = () => {
+    input.value = DEFAULT_NAMES[Math.floor(Math.random() * DEFAULT_NAMES.length)];
+    input.focus();
+  };
+  input.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") document.getElementById("modal-btn").click();
+  });
+
+  document.getElementById("modal-title").textContent = "なまえ";
+  document.getElementById("modal-sub").textContent = "きみの よびな";
+  document.getElementById("modal-note").textContent =
+    "この端末に おぼえておくよ。空っぽのまま きめると おまかせになる。";
+  document.getElementById("modal-btn").textContent = "きめる";
+  document.getElementById("overlay").classList.add("show");
+  setTimeout(() => input.select(), 50);
+}
+
 /** マニュアル。ルールを ぜんぶ出す。ゲーム中でも いつでも開ける */
 function showManual() {
   modalMode = "manual";
@@ -1337,6 +1372,15 @@ function showManual() {
 }
 
 document.getElementById("modal-btn").onclick = () => {
+  // なまえ画面は 入力を 保存してから とじる
+  if (modalMode === "name") {
+    const input = document.getElementById("name-input");
+    setPlayerName(input ? input.value : "");
+    document.getElementById("overlay").classList.remove("show");
+    modalMode = "title";
+    if (G) render();                       // リーダー欄の 名前を 描きなおす
+    return;
+  }
   document.getElementById("overlay").classList.remove("show");
   // マニュアルを とじただけのときは 何も起こさない
   if (modalMode === "manual") return;
@@ -1345,6 +1389,7 @@ document.getElementById("modal-btn").onclick = () => {
 document.getElementById("player-leader").onclick = () => onLeaderClick(G.player);
 document.getElementById("enemy-leader").onclick  = () => onLeaderClick(G.enemy);
 document.getElementById("manual-btn").onclick = showManual;
+document.getElementById("name-btn").onclick = showNameEditor;
 document.getElementById("zoom").onclick = hideZoom;
 document.getElementById("tip-close").onclick = (ev) => {
   ev.stopPropagation();
