@@ -1770,6 +1770,12 @@ document.getElementById("modal-btn").onclick = () => {
   if (modalMode === "manual") return;
   if (!G || G.over) newGame();
 };
+// マニュアルは まわりの くらいところを タップしても とじられる
+// （なまえや デッキは 保存が いるので ボタンから とじてもらう）
+document.getElementById("overlay").onclick = (ev) => {
+  if (ev.target !== ev.currentTarget) return;    // 中身を おしたときは 何もしない
+  if (modalMode === "manual") closeModal();
+};
 document.getElementById("player-leader").onclick = () => onLeaderClick(G.player);
 document.getElementById("enemy-leader").onclick  = () => onLeaderClick(G.enemy);
 document.getElementById("menu-btn").onclick = showMenu;
