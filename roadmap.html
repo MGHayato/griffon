@@ -340,7 +340,17 @@
       <li>CPU対戦で最後まで遊べる。カード20種40枚、3レーン盤面</li>
       <li>Git・Vite・Vitest の開発環境ができた（保存すると即反映、テストが走る）</li>
       <li>ルールの読み取りを <code>core/</code> に分離ずみ。テスト18件が守っている</li>
-      <li>Artifactで公開中 ── ただし<strong>閲覧者には古い版が固定されている</strong></li>
+      <li><strong>自分のURLで公開できた</strong> ── <code>mghayato.github.io/griffon/</code></li>
+      <li><code>git push</code> するだけで テスト → ビルド → 公開まで自動で走る</li>
+    </ul>
+  </div>
+
+  <div class="now" style="border-color:var(--accent); box-shadow:inset 0 0 0 2px var(--card), 0 2px 0 var(--accent);">
+    <div class="now-label" style="color:var(--accent)">つぎの一手</div>
+    <ul>
+      <li><strong>PWA化</strong>（フェーズ2の残り）── アイコン・全画面起動・オフライン・向き固定</li>
+      <li>ゲームの中身には触らないので、<strong>カードを増やす前にやる方が得</strong></li>
+      <li>終われば友達に「アプリだよ」と渡せる。Google Playのテスター集めの助走にもなる</li>
     </ul>
   </div>
 
@@ -403,14 +413,20 @@
     <div class="phase" data-n="2">
       <div class="phase-head">
         <h3>自分のURLを持つ</h3>
-        <span class="tag key">オンライン対戦の前提</span>
+        <span class="tag key">半分おわった</span>
         <span class="tag free">費用なし</span>
       </div>
-      <div class="effort">目安：セッション1〜2回</div>
+      <div class="effort">目安：あとセッション1〜2回</div>
 
-      <h4>やること</h4>
+      <h4>もう終わったこと</h4>
       <ul>
-        <li>GitHubの公開リポジトリから GitHub Pages で配信する</li>
+        <li>GitHubの公開リポジトリを作り、GitHub Pages で配信した</li>
+        <li>push すると GitHub側で テスト→ビルド→公開まで自動で走る</li>
+        <li>友達に送るURLが確定した ── <code>mghayato.github.io/griffon/</code></li>
+      </ul>
+
+      <h4>残っていること（＝つぎの一手）</h4>
+      <ul>
         <li>PWAにする ── アイコン、全画面起動、<strong>電波なしでもCPU対戦が動く</strong></li>
         <li>画面の向きを固定する（PWAなら指定できる）</li>
       </ul>
