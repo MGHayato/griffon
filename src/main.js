@@ -1159,35 +1159,82 @@ function shakeEl(el) {
 /* =========================================================
    ルール画面 / 起動
    ========================================================= */
-const RULES = [
-  ["しょうり", "相手リーダーの <b>HP20</b> を けずりきったら 勝ち。"],
-  ["MP",       "毎ターン MPが 1ずつ ふえる（最大10）。MPを はらって カードを出す。"],
-  ["ばんめん", "たてに <b>3レーン</b>、それぞれ <b>ぜんれつ</b>と <b>こうれつ</b>の マスがある。"],
-  ["ガード",   "こうれつのユニットは、<b>おなじレーンの ぜんれつに なかまがいる間</b> こうげきされない。"],
-  ["ブロック", "<b>3レーンすべてに ユニットがいる</b>と リーダーを こうげきできなくなる（前でも後ろでもOK）。"],
-  ["とくぎ",   "とくぎカードは この2つを <b>無視</b>して、好きな相手を ねらえる。"],
-  ["こうげき", "自分のユニット → あいて の順に クリック。ユニット同士なら はんげきを うける。"],
-  ["こおり",   "❄️が ついた ユニットは <b>つぎの じぶんのターンまで こうげきできない</b>。"],
+/* マニュアルの 中身。章ごとに 分けてある。
+   起動画面には このうち QUICK_RULES で 選んだものだけ 出す。 */
+const MANUAL = [
+  {
+    title: "基本ルール",
+    rules: [
+      ["しょうり", "相手リーダーの <b>HP20</b> を けずりきったら 勝ち。"],
+      ["MP",       "毎ターン MPが 1ずつ ふえる（最大10）。MPを はらって カードを出す。"],
+      ["ばんめん", "たてに <b>3レーン</b>、それぞれ <b>ぜんれつ</b>と <b>こうれつ</b>の マスがある。"],
+      ["ガード",   "こうれつのユニットは、<b>おなじレーンの ぜんれつに なかまがいる間</b> こうげきされない。"],
+      ["ブロック", "<b>3レーンすべてに ユニットがいる</b>と リーダーを こうげきできなくなる（前でも後ろでもOK）。"],
+      ["こうげき", "自分のユニット → あいて の順に タップ。ユニット同士なら はんげきを うける。"],
+      ["とくぎ",   "とくぎカードは ガードと ブロックを <b>無視</b>して、好きな相手を ねらえる。"],
+    ],
+  },
+  {
+    title: "状態異常",
+    rules: [
+      ["こおり", "❄️が ついた ユニットは <b>つぎの じぶんのターンまで こうげきできない</b>。"],
+    ],
+  },
 ];
 
-function showRules() {
-  const r = document.getElementById("modal-rules");
-  r.innerHTML = RULES.map(([k, v]) =>
-    `<div class="rule-line"><span class="rule-key">${k}</span><span>${v}</span></div>`).join("");
+/** 起動画面に出す分（章をまたいで 名前で選ぶ） */
+const QUICK_RULES = ["しょうり", "MP", "ガード", "ブロック", "こうげき"];
+
+/** いまモーダルに 何を出しているか（とじたときの ふるまいが変わる） */
+let modalMode = "title";      // "title" | "manual"
+
+/** 章の見出しつきで 並べる。章が1つだけなら 見出しは出さない */
+function fillRules(chapters) {
+  document.getElementById("modal-rules").innerHTML = chapters.map(ch => {
+    const head = chapters.length > 1
+      ? `<div class="chapter">${ch.title}</div>` : "";
+    const body = ch.rules.map(([k, v]) =>
+      `<div class="rule-line"><span class="rule-key">${k}</span><span>${v}</span></div>`).join("");
+    return head + body;
+  }).join("");
+}
+
+/** 起動画面。かんたんな説明だけ */
+function showTitle() {
+  modalMode = "title";
+  const picked = MANUAL
+    .flatMap(ch => ch.rules)
+    .filter(([k]) => QUICK_RULES.includes(k));
+  fillRules([{ title: "", rules: picked }]);
   document.getElementById("modal-title").textContent = "グリフォン";
   document.getElementById("modal-sub").textContent = "GRID FORMATION";
-  document.getElementById("modal-note").textContent = "対戦相手は CPU。デッキは 20種×2枚の 40枚。";
+  document.getElementById("modal-note").textContent =
+    "対戦相手は CPU。くわしい ルールは 下の「マニュアル」から 見られるよ。";
   document.getElementById("modal-btn").textContent = G ? "とじる" : "たたかう";
+  document.getElementById("overlay").classList.add("show");
+}
+
+/** マニュアル。ルールを ぜんぶ出す。ゲーム中でも いつでも開ける */
+function showManual() {
+  modalMode = "manual";
+  fillRules(MANUAL);
+  document.getElementById("modal-title").textContent = "マニュアル";
+  document.getElementById("modal-sub").textContent = "グリフォンの ルール";
+  document.getElementById("modal-note").textContent =
+    "デッキは 20種×2枚の 40枚。やまふだが つきると すこしずつ ダメージを うける。";
+  document.getElementById("modal-btn").textContent = "とじる";
   document.getElementById("overlay").classList.add("show");
 }
 
 document.getElementById("modal-btn").onclick = () => {
   document.getElementById("overlay").classList.remove("show");
+  // マニュアルを とじただけのときは 何も起こさない
+  if (modalMode === "manual") return;
   if (!G || G.over) newGame();
 };
 document.getElementById("player-leader").onclick = () => onLeaderClick(G.player);
 document.getElementById("enemy-leader").onclick  = () => onLeaderClick(G.enemy);
-document.getElementById("rules-btn").onclick = showRules;
+document.getElementById("manual-btn").onclick = showManual;
 document.getElementById("tip-close").onclick = (ev) => {
   ev.stopPropagation();
   document.getElementById("rotate-tip").classList.add("closed");
@@ -1227,4 +1274,4 @@ document.getElementById("screen").addEventListener("click", (e) => {
   }
 });
 
-showRules();
+showTitle();

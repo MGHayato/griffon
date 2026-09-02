@@ -579,6 +579,8 @@
   #overlay.show { display: flex; }
   .modal {
     max-width: 520px; width: 100%;
+    /* マニュアルは 行が多いので、はみ出したら 中でスクロールさせる */
+    max-height: 88dvh; overflow-y: auto;
     padding: 26px 30px 24px;
     text-align: center;
     border-radius: 10px;
@@ -605,6 +607,17 @@
     display: flex; flex-direction: column; gap: 7px;
     margin-bottom: 20px;
   }
+  /* マニュアルの 章見出し */
+  .chapter {
+    font-family: var(--font-dot);
+    font-size: 13px; letter-spacing: 2px;
+    color: var(--gold);
+    border-bottom: 1px solid rgba(242,193,78,.35);
+    padding-bottom: 4px;
+    margin: 10px 0 2px;
+  }
+  .chapter:first-child { margin-top: 0; }
+
   .rule-line { display: flex; gap: 9px; align-items: baseline; }
   .rule-key {
     font-family: var(--font-dot);
