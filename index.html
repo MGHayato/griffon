@@ -15,7 +15,10 @@
   <div id="rotate-tip">📱 たて画面の方が 遊びやすいよ<button id="tip-close">とじる</button></div>
 
   <!-- メニュー（右上） -->
-  <button id="menu-btn" type="button" aria-label="メニュー">≡</button>
+  <button id="menu-btn" type="button" aria-label="メニュー">
+    <span class="menu-icon">≡</span>
+    <span class="menu-label">メニュー</span>
+  </button>
 
   <!-- 敵リーダー -->
   <div class="win leader-row enemy-side">
@@ -25,7 +28,7 @@
       <div class="stat-bar">
         <span class="badge hp">HP <span id="enemy-hp">20</span></span>
         <span class="badge mp">MP <span id="enemy-mp">0</span>/<span id="enemy-maxmp">0</span></span>
-        <span class="badge deck">やまふだ <span id="enemy-deck">40</span></span>
+        <span class="badge deck">山札 <span id="enemy-deck">40</span></span>
         <span class="badge guard" id="enemy-guard" hidden>🛡 まもられている</span>
       </div>
     </div>
@@ -55,7 +58,7 @@
         <span class="badge hp">HP <span id="player-hp">20</span></span>
         <span class="badge mp">MP <span id="player-mp">0</span>/<span id="player-maxmp">0</span></span>
         <div class="mp-pips" id="mp-pips"></div>
-        <span class="badge deck">やまふだ <span id="player-deck">40</span></span>
+        <span class="badge deck">山札 <span id="player-deck">40</span></span>
         <span class="badge guard" id="player-guard" hidden>🛡 まもられている</span>
       </div>
     </div>

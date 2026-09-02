@@ -53,7 +53,7 @@ function draw(side) {
   if (side.deck.length === 0) {
     side.fatigue++;
     side.hp -= side.fatigue;
-    log(`${sideName(side)}は やまふだが つきて ${side.fatigue}ダメージ！`);
+    log(`${sideName(side)}は 山札が つきて ${side.fatigue}ダメージ！`);
     checkGameOver();
     return;
   }
@@ -1441,7 +1441,7 @@ function showManual() {
   document.getElementById("modal-title").textContent = "マニュアル";
   document.getElementById("modal-sub").textContent = "グリフォンの ルール";
   document.getElementById("modal-note").textContent =
-    "デッキは 20種×2枚の 40枚。やまふだが つきると すこしずつ ダメージを うける。";
+    "デッキは 20種×2枚の 40枚。山札が つきると すこしずつ ダメージを うける。";
   document.getElementById("modal-btn").textContent = "とじる";
   document.getElementById("overlay").classList.add("show");
 }
