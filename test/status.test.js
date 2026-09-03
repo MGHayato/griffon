@@ -11,7 +11,7 @@ import {
   grantShield, tickShield, shieldSum, shieldSoonest,
 } from "../src/core/state.js";
 import { CARD_MAP, CARDS } from "../src/core/cards.js";
-import { canPlay, costOf, frozenUnits, effectCandidates, shieldOf } from "../src/core/board.js";
+import { canPlay, costOf, frozenUnits, effectCandidates, shieldOf, summonEffect } from "../src/core/board.js";
 
 beforeEach(() => {
   setFoeDeckId("alice");
@@ -123,6 +123,31 @@ describe("出せるか の 判定", () => {
     put(G.enemy, "front", 0, "slime", { frozen: 2 });
     put(G.enemy, "front", 1, "slime", { frozen: 2 });
     expect(canPlay(G.player, "windragon")).toBe(true);    // 7-2=5
+  });
+});
+
+describe("召喚時と 死亡時の 見わけ", () => {
+  it("死亡時こうかは 召喚時に 出てこない", () => {
+    const ghost = CARD_MAP["ghost"];
+    expect(ghost.effect.when).toBe("death");     // 効果は 持っているが
+    expect(summonEffect(ghost)).toBeNull();      // 召喚では 発動しない
+  });
+
+  it("召喚時こうかは ちゃんと 返る", () => {
+    expect(summonEffect(CARD_MAP["archer"])).toEqual(CARD_MAP["archer"].effect);
+    expect(summonEffect(CARD_MAP["healslime"])).toEqual(CARD_MAP["healslime"].effect);
+  });
+
+  it("効果を もたない子は null", () => {
+    expect(summonEffect(CARD_MAP["slime"])).toBeNull();
+    expect(summonEffect(CARD_MAP["golem"])).toBeNull();
+    expect(summonEffect(undefined)).toBeNull();
+  });
+
+  it("死亡時こうかを 持つカードは ぜんぶ 召喚では 出ない", () => {
+    const deaths = CARDS.filter(c => c.effect && c.effect.when === "death");
+    expect(deaths.length).toBeGreaterThan(0);
+    for (const c of deaths) expect(summonEffect(c), c.name).toBeNull();
   });
 });
 

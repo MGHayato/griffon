@@ -20,7 +20,7 @@ import {
   allUnits, hasFreeSlot, laneOccupied, leaderBlocked, isCovered,
   laneUnits, unitLocation, candidateLanes, candidateRows,
   legalAttackTargets, canAttack, canPlay, effectCandidates,
-  costOf, frozenUnits, shieldOf,
+  costOf, frozenUnits, shieldOf, summonEffect,
 } from "./core/board.js";
 
 /** 新しい対戦を はじめる（状態づくりは core、演出は ここ） */
@@ -571,8 +571,10 @@ function onSlotClick(row, idx) {
   G.pickedCard = null;
   G.mode = "idle";
 
-  if (c.effect) {
-    const e = c.effect;
+  // 「死亡時：〜」は ここでは 発動しない（やられたとき に まわす）
+  const summonE = summonEffect(c);
+  if (summonE) {
+    const e = summonE;
     const all = wholeTargets(e, G.player);
     if (all) { applyEffect(e, all, G.player); render(); return; }
     if (e.target === "self" || e.target === "allySelf") { applyEffect(e, [], G.player); render(); return; }
@@ -820,12 +822,15 @@ function aiChooseCard(playable) {
   const foes = allUnits(G.player);
 
   // まとめて倒せるなら全体攻撃
-  const storm = playable.find(x => x.c.effect && x.c.effect.target === "enemyAll");
-  if (storm && foes.filter(u => u.hp <= storm.c.effect.value).length >= 2) return storm;
+  const storm = playable.find(x => {
+    const e = summonEffect(x.c);
+    return e && e.target === "enemyAll";
+  });
+  if (storm && foes.filter(u => u.hp <= summonEffect(storm.c).value).length >= 2) return storm;
 
   // たて一列で2体まとめて倒せるなら それ
   for (const x of playable) {
-    const e = x.c.effect;
+    const e = summonEffect(x.c);
     if (e && e.kind === "damage" && e.target === "enemyLane") {
       const lane = aiChooseLane(e);
       if (lane !== null && laneUnits(G.player, lane).filter(u => u.hp <= e.value).length >= 2) return x;
@@ -834,7 +839,7 @@ function aiChooseCard(playable) {
 
   // 確実に除去できる呪文があれば使う
   for (const x of playable) {
-    const e = x.c.effect;
+    const e = summonEffect(x.c);
     if (x.c.type !== "unit" && e && e.kind === "damage" && e.target === "enemyUnit") {
       if (foes.some(u => u.hp <= e.value && u.atk >= 3)) return x;
     }
@@ -874,7 +879,8 @@ function aiPlayCard(pick) {
   if (c.type === "unit") {
     const spot = aiPlaceUnit(E, c);
     summon(E, c.id, spot.row, spot.idx);
-    if (c.effect) resolve(c.effect);
+    const summonE = summonEffect(c);      // 死亡時こうかは ここでは 出さない
+    if (summonE) resolve(summonE);
   } else {
     log(`${sideName(G.enemy)}は「${c.name}」を ${c.type === "item" ? "つかった" : "となえた"}！`);
     resolve(c.effect);

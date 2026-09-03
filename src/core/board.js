@@ -103,6 +103,16 @@ export function shieldOf(t) {
   return shieldSum(t.shield) + (s ? shieldSum(s.shield) : 0);
 }
 
+/**
+ * よびだした ときに すぐ 発動する 効果。
+ * 「死亡時：〜」は やられるまで 出番が 無いので ここでは 返さない。
+ */
+export function summonEffect(card) {
+  const e = card && card.effect;
+  if (!e || e.when === "death") return null;
+  return e;
+}
+
 /** こおっている 敵ユニット */
 export function frozenUnits(side) {
   return allUnits(opponentOf(side)).filter(u => u.frozen);
