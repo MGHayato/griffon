@@ -130,4 +130,52 @@ describe("効果の あて先", () => {
     const list = effectCandidates({ target: "enemyFrozen" }, G.player);
     expect(list).toEqual([a]);
   });
+
+  it("「味方」は リーダーも えらべる", () => {
+    const u = put(G.player, "front", 0, "slime");
+    expect(effectCandidates({ target: "allyAny" }, G.player)).toEqual([u, G.player]);
+    expect(effectCandidates({ target: "allyAll" }, G.player)).toEqual([u, G.player]);
+  });
+
+  it("「味方ユニット」は 盤面の子だけ", () => {
+    const u = put(G.player, "front", 0, "slime");
+    expect(effectCandidates({ target: "allyUnit" }, G.player)).toEqual([u]);
+    expect(effectCandidates({ target: "allyUnitAll" }, G.player)).toEqual([u]);
+  });
+});
+
+describe("「味方」と「味方ユニット」の 書きわけ", () => {
+  const targetOf = name => CARDS.find(c => c.name === name).effect.target;
+
+  it("「味方1体を回復」は リーダーも えらべる", () => {
+    for (const nm of ["ヒール", "ハイヒール", "メガヒール", "薬草", "リンゴ", "ヒールスライム"]) {
+      expect(targetOf(nm), nm).toBe("allyAny");
+    }
+  });
+
+  it("「味方ユニット全体」は 盤面だけ", () => {
+    for (const nm of ["ゆうきの歌", "アイドルソング"]) {
+      expect(targetOf(nm), nm).toBe("allyUnitAll");
+    }
+  });
+
+  it("木の盾は「味方1体」なので リーダーにも かけられる", () => {
+    expect(targetOf("木の盾")).toBe("allyAny");
+  });
+
+  it("ヴェールは 味方全体の まもり", () => {
+    expect(targetOf("ヴェール")).toBe("allySelf");
+    expect(targetOf("ルミナスヴェール")).toBe("allySelf");
+  });
+
+  it("攻撃力を 上げるのは ユニットだけ", () => {
+    expect(targetOf("短剣")).toBe("allyUnit");
+  });
+
+  it("回復カードの あて先は ぜんぶ 決めた4つの どれか", () => {
+    const ok = ["allyUnit", "allyAny", "allyUnitAll", "allyAll", "allySelf"];
+    for (const c of CARDS.filter(c => c.effect && ["heal", "buff", "buffAtk", "shield"].includes(c.effect.kind))) {
+      expect(ok, `${c.name} の ${c.effect.target}`).toContain(c.effect.target);
+    }
+  });
 });

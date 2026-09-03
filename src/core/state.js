@@ -126,7 +126,8 @@ export function makeSide(isPlayer, deckId) {
     fatigue: 0,
     usedItems: [],        // これまで 使った どうぐ（サルベージが 拾いなおす）
     itemDiscount: 0,      // このターン だけの どうぐの ねびき
-    shield: null,         // { value, turns } うけるダメージを へらす
+    shield: null,         // { value, turns } 味方全体の まもり（ヴェール）
+    ownShield: null,      // { value, turns } リーダー自身の まもり（木の盾）
     noSpell: false,       // シャラプー中は とくぎを 出せない
   };
 }

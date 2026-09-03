@@ -147,7 +147,8 @@ def parse_effect(text, is_unit):
         traits["rush"] = True
         return None, traits
 
-    m = re.search(r"攻撃するたび味方1体を" + NUM + r"回復", t.replace(" ", ""))
+    m = re.search(r"攻撃するたび(?:ランダムな)?味方(?:ユニット)?1体を" + NUM + r"回復",
+                  t.replace(" ", ""))
     if m:
         traits["healOnAttack"] = n(m.group(1))
         return None, traits
@@ -214,10 +215,11 @@ def parse_effect(text, is_unit):
         return done({"kind": "shield", "value": n(m.group(2)),
                      "turns": n(m.group(1)), "target": "allySelf"})
 
-    m = re.search(NUM + r"ターンの間味方(?:ユニット)?1体が受けるダメージ-" + NUM, flat)
+    m = re.search(NUM + r"ターンの間味方(ユニット)?1体が受けるダメージ-" + NUM, flat)
     if m:
-        return done({"kind": "shield", "value": n(m.group(2)),
-                     "turns": n(m.group(1)), "target": "allyUnit"})
+        return done({"kind": "shield", "value": n(m.group(3)),
+                     "turns": n(m.group(1)),
+                     "target": "allyUnit" if m.group(2) else "allyAny"})
 
     # --- とくぎ封じ ---
     if re.search(r"次のターン敵は(?:とくぎ|特技)を使えない", flat):
@@ -264,20 +266,22 @@ def parse_effect(text, is_unit):
         return done({"kind": "damage", "value": n(m.group(1)), "target": "enemyAny"})
 
     # --- 回復 ---
-    m = re.search(r"味方(?:ユニット)?全体の?HPを" + NUM + r"回復", flat)
+    # 「味方」なら リーダーも ふくむ。「味方ユニット」なら 盤面の子だけ
+    m = re.search(r"味方(ユニット)?全体の?HPを" + NUM + r"回復", flat)
     if m:
-        return done({"kind": "heal", "value": n(m.group(1)), "target": "allyAll"})
+        return done({"kind": "heal", "value": n(m.group(2)),
+                     "target": "allyUnitAll" if m.group(1) else "allyAll"})
 
-    m = re.search(r"味方(?:ユニット)?1体を" + NUM + r"回復", flat)
+    m = re.search(r"味方(ユニット)?1体を" + NUM + r"回復", flat)
     if m:
-        # とくぎ・どうぐなら リーダーも えらべる。ユニットの 召喚時こうかは 仲間だけ
-        return done({"kind": "heal", "value": n(m.group(1)),
-                     "target": "allyUnit" if is_unit else "allyAny"})
+        return done({"kind": "heal", "value": n(m.group(2)),
+                     "target": "allyUnit" if m.group(1) else "allyAny"})
 
     # --- 強化 ---
+    # 攻撃力とHPの 上げ下げは 盤面の子にしか かけられない（リーダーは 攻撃しないので）
     m = re.search(r"味方(?:ユニット)?全体を\+?" + NUM + r"/\+?" + NUM, flat)
     if m:
-        return done({"kind": "buff", "value": n(m.group(1)), "target": "allyAll"})
+        return done({"kind": "buff", "value": n(m.group(1)), "target": "allyUnitAll"})
 
     m = re.search(r"味方(?:ユニット)?1体の攻撃力を?\+?" + NUM + r"(?:上げる)?", flat)
     if m:

@@ -121,7 +121,7 @@ export function canPlay(side, cardId) {
 
   const e = c.effect;
   if ((e.target === "enemyUnit" || e.target === "enemyAll") && allUnits(opponentOf(side)).length === 0) return false;
-  if ((e.target === "allyUnit"  || e.target === "allyAll")  && allUnits(side).length === 0) return false;
+  if ((e.target === "allyUnit" || e.target === "allyUnitAll") && allUnits(side).length === 0) return false;
   if (e.target === "enemyLane" && candidateLanes(side).length === 0) return false;
   if (e.target === "enemyRow"  && candidateRows(side).length === 0) return false;
   if (e.target === "enemyFrozen" && frozenUnits(side).length === 0) return false;
@@ -138,9 +138,11 @@ export function effectCandidates(effect, side) {
     case "enemyAny":  return [...allUnits(foe), foe];   // リーダーも ねらえる
     case "enemyAll":  return allUnits(foe);
     case "enemyFrozen": return frozenUnits(side);
-    case "allyUnit":  return allUnits(side);
-    case "allyAll":   return allUnits(side);
-    case "allyAny":   return [...allUnits(side), side];
+    // 「味方ユニット」＝ 盤面の子だけ。「味方」＝ リーダーも ふくむ
+    case "allyUnit":    return allUnits(side);
+    case "allyUnitAll": return allUnits(side);
+    case "allyAny":     return [...allUnits(side), side];
+    case "allyAll":     return [...allUnits(side), side];
     default: return [];
   }
 }

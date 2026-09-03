@@ -66,8 +66,13 @@ describe("デッキ", () => {
     }
   });
 
-  it("アリスは 40枚 そろっている", () => {
-    expect(getDeck("alice").total).toBe(40);
+  it("どのデッキも おなじ枚数", () => {
+    const sizes = [...new Set(DECKS.map(d => d.total))];
+    expect(sizes.length, `枚数が バラバラ: ${DECKS.map(d => d.label + d.total).join(" / ")}`).toBe(1);
+  });
+
+  it("1デッキ 30枚", () => {
+    expect(getDeck("alice").total).toBe(30);
   });
 
   it("中身の ないデッキは えらべる一覧に 出てこない", () => {
