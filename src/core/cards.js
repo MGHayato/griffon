@@ -73,7 +73,7 @@ export const CARDS = [
   { id:"candybomb", name:"キャンディボム", cost:4, type:"item", emoji:"🍬", text:"敵ユニット全体に2ダメージ",
     effect:{ kind:"damage", value:2, target:"enemyAll" } },
 
-  // --- ユニット（18種）---
+  // --- ユニット（19種）---
   { id:"slime", name:"スライム", cost:0, type:"unit", atk:1, hp:1, emoji:"🟦", text:"" },
   { id:"rabbit", name:"ダッシュうさぎ", cost:1, type:"unit", atk:1, hp:1, emoji:"🐇", text:"召喚したターンから攻撃できる",
     rush:true },
@@ -105,6 +105,8 @@ export const CARDS = [
     healOnAttack:2 },
   { id:"dragon", name:"ドラゴン", cost:6, type:"unit", atk:4, hp:6, emoji:"🐉", text:"召喚時：縦一列に2ダメージ",
     effect:{ kind:"damage", value:2, target:"enemyLane" } },
+  { id:"healdemon", name:"ヒールデーモン", cost:6, type:"unit", atk:3, hp:5, emoji:"😈", text:"味方が回復するたびランダムな敵1体に2ダメージ",
+    damageOnHeal:2 },
   { id:"windragon", name:"ウィンタードラゴン", cost:7, type:"unit", atk:4, hp:6, emoji:"🐲", text:"凍結している敵の数だけコスト-1、召喚時：縦一列に2ダメージ",
     effect:{ kind:"damage", value:2, target:"enemyLane" },
     frostCost:1 },
@@ -117,7 +119,7 @@ export const DECKS = [
   { id:"hansel", label:"ヘンゼル", emoji:"🍞", desc:"多彩な道具で味方を強化して戦う", total:30,
     cards:[["salvage",2], ["glove",2], ["map",2], ["crumb",2], ["pebble",2], ["dagger",2], ["woodshield",2], ["sling",2], ["candybomb",2], ["slime",2], ["rabbit",2], ["goblin",2], ["thiefgoblin",2], ["rocketrabbit",2], ["dragon",2]] },
   { id:"gretel", label:"グレーテル", emoji:"🍬", desc:"回復手段が多い持久型", total:30,
-    cards:[["heal",2], ["idolsong",1], ["highheal",1], ["veil",2], ["megaheal",1], ["lumiveil",2], ["map",1], ["crumb",2], ["herb",2], ["candybomb",2], ["slime",2], ["rabbit",2], ["thiefgoblin",2], ["healslime",2], ["rocketrabbit",2], ["priestelf",2], ["golem",2]] },
+    cards:[["heal",2], ["idolsong",1], ["highheal",1], ["veil",2], ["megaheal",1], ["lumiveil",2], ["map",1], ["crumb",2], ["herb",2], ["candybomb",2], ["slime",2], ["rabbit",2], ["thiefgoblin",2], ["healslime",2], ["rocketrabbit",2], ["priestelf",2], ["healdemon",2]] },
   { id:"snow", label:"スノウ", emoji:"🍎", desc:"氷系の呪文で敵を凍らせて戦う", total:30,
     cards:[["freeze",2], ["hail",1], ["frostbite",2], ["megafreeze",2], ["blizzard",1], ["megafrost",2], ["map",2], ["apple",2], ["poisonapple",2], ["slime",2], ["wingoblin",2], ["ghost",2], ["snowslime",2], ["yeti",2], ["yukionna",2], ["windragon",2]] },
 ];

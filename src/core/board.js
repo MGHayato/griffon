@@ -126,6 +126,11 @@ export function summonEffect(card) {
   return e;
 }
 
+/** 味方が 回復した ときに はたらく子（ヒールデーモン）を あつめる */
+export function healWatchers(side) {
+  return allUnits(side).filter(u => u.damageOnHeal > 0);
+}
+
 /** こおっている 敵ユニット */
 export function frozenUnits(side) {
   return allUnits(opponentOf(side)).filter(u => u.frozen);

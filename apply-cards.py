@@ -50,7 +50,7 @@ EMOJI = {
     "ゴーレム": "🗿", "ドラゴン": "🐉",
     "真冬のゴブリン": "🧊", "ぬすっとゴブリン": "🎒", "スノウスライム": "⬜",
     "ゆきおとこ": "🦍", "ゆきおんな": "👘", "ロケットうさぎ": "🚀",
-    "プリーストエルフ": "🙏", "ウィンタードラゴン": "🐲",
+    "プリーストエルフ": "🙏", "ウィンタードラゴン": "🐲", "ヒールデーモン": "😈",
     # とくぎ
     "フレア": "🔥", "ヒール": "✨", "ゆうきの歌": "🎵", "つむじ風": "💨",
     "サンダー": "⚡", "ストーム": "🌪️", "フリーズ": "❄️", "スラッシュ": "⚔️",
@@ -96,7 +96,7 @@ ID_BY_NAME = {
     "真冬のゴブリン": "wingoblin", "ぬすっとゴブリン": "thiefgoblin",
     "スノウスライム": "snowslime", "ゆきおとこ": "yeti", "ゆきおんな": "yukionna",
     "ロケットうさぎ": "rocketrabbit", "プリーストエルフ": "priestelf",
-    "ウィンタードラゴン": "windragon",
+    "ウィンタードラゴン": "windragon", "ヒールデーモン": "healdemon",
     # とくぎ
     "フレア": "flare", "ヒール": "heal", "ゆうきの歌": "song", "つむじ風": "whirl",
     "サンダー": "thunder", "ストーム": "storm", "フリーズ": "freeze",
@@ -151,6 +151,12 @@ def parse_effect(text, is_unit):
                   t.replace(" ", ""))
     if m:
         traits["healOnAttack"] = n(m.group(1))
+        return None, traits
+
+    m = re.search(r"味方が回復するたび(?:ランダムな)?敵(?:ユニット)?1体に" + NUM + r"ダメージ",
+                  t.replace(" ", ""))
+    if m:
+        traits["damageOnHeal"] = n(m.group(1))
         return None, traits
 
     # こおっている敵の数だけ 安くなる。
@@ -531,7 +537,7 @@ def main():
                 if c["traits"].get(key):
                     tail.append(f"\n    {key}:true")
             # 数を もつ もちもの（回復量・ねびきの はば）
-            for key in ("healOnAttack", "frostCost"):
+            for key in ("healOnAttack", "frostCost", "damageOnHeal"):
                 if c["traits"].get(key):
                     tail.append(f'\n    {key}:{c["traits"][key]}')
             L.append(head + ("," + ",".join(tail) if tail else "") + " },")

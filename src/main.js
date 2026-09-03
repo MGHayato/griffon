@@ -20,7 +20,7 @@ import {
   allUnits, hasFreeSlot, laneOccupied, leaderBlocked, isCovered,
   laneUnits, unitLocation, candidateLanes, candidateRows,
   legalAttackTargets, canAttack, canPlay, effectCandidates,
-  costOf, frozenUnits, shieldOf, summonEffect, matchesFilter,
+  costOf, frozenUnits, shieldOf, summonEffect, matchesFilter, healWatchers,
 } from "./core/board.js";
 
 /** 新しい対戦を はじめる（状態づくりは core、演出は ここ） */
@@ -153,6 +153,7 @@ function summon(side, cardId, row, idx) {
     attacked: false, side: side.isPlayer ? "player" : "enemy",
     lifesteal: !!c.lifesteal,
     healOnAttack: c.healOnAttack || 0,
+    damageOnHeal: c.damageOnHeal || 0,
   };
   side[row][idx] = unit;
   log(`${sideName(side)}は「${c.name}」を ${row === "front" ? "ぜんれつ" : "こうれつ"}に よびだした！`);
@@ -363,6 +364,36 @@ function healTarget(target, amount) {
   target.hp = Math.min(cap, target.hp + amount);
   fxHeal(target);                                  // 回復は いつでも 緑のキラキラ
   floatNum(target, `+${target.hp - before}`, "heal");
+  if (target.hp > before) afterHeal(target);       // ほんとうに 増えたときだけ
+}
+
+/**
+ * 味方が 回復した ときに はたらく もちもの（ヒールデーモン）。
+ * 満タンで 何も 増えなかった ときは 出ない。
+ * ダメージで また 回復が おきることは 無いけれど、
+ * ねんのため 入れ子に ならないよう 見はっておく。
+ */
+let healingNow = false;
+function afterHeal(target) {
+  if (healingNow) return;
+  const side = isLeader(target) ? target : sideOf(target);
+  if (!side) return;
+  const demons = healWatchers(side);
+  if (!demons.length) return;
+
+  healingNow = true;
+  try {
+    const foe = opponentOf(side);
+    for (const d of demons) {
+      const pool = [...allUnits(foe), foe];       // リーダーも 入る
+      const who = pool[Math.floor(Math.random() * pool.length)];
+      log(`「${d.name}」が ${who.name || sideName(foe)}に ${d.damageOnHeal}ダメージ！`);
+      dealDamage(who, d.damageOnHeal);
+    }
+  } finally {
+    healingNow = false;
+  }
+  scheduleCleanup();
 }
 
 /** やられたユニットを少し遅れて盤面から消す（演出のため） */

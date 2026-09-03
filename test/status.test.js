@@ -11,7 +11,7 @@ import {
   grantShield, tickShield, shieldSum, shieldSoonest,
 } from "../src/core/state.js";
 import { CARD_MAP, CARDS } from "../src/core/cards.js";
-import { canPlay, costOf, frozenUnits, effectCandidates, shieldOf, summonEffect, matchesFilter } from "../src/core/board.js";
+import { canPlay, costOf, frozenUnits, effectCandidates, shieldOf, summonEffect, matchesFilter, healWatchers } from "../src/core/board.js";
 
 beforeEach(() => {
   setFoeDeckId("alice");
@@ -123,6 +123,43 @@ describe("出せるか の 判定", () => {
     put(G.enemy, "front", 0, "slime", { frozen: 2 });
     put(G.enemy, "front", 1, "slime", { frozen: 2 });
     expect(canPlay(G.player, "windragon")).toBe(true);    // 7-2=5
+  });
+});
+
+describe("回復に 反応する（ヒールデーモン）", () => {
+  it("ヒールデーモンは damageOnHeal を もつ", () => {
+    const c = CARD_MAP["healdemon"];
+    expect(c.damageOnHeal).toBe(2);
+    expect(c.effect, "召喚時こうかは 持たない").toBeUndefined();
+  });
+
+  it("盤面に いれば 見つかる", () => {
+    expect(healWatchers(G.player)).toEqual([]);
+    const d = put(G.player, "front", 0, "healdemon", { damageOnHeal: 2 });
+    expect(healWatchers(G.player)).toEqual([d]);
+  });
+
+  it("ふつうの子は 反応しない", () => {
+    put(G.player, "front", 0, "slime");
+    put(G.player, "front", 1, "priestelf", { healOnAttack: 2 });
+    expect(healWatchers(G.player)).toEqual([]);
+  });
+
+  it("2体 いれば 2体とも 反応する", () => {
+    const a = put(G.player, "front", 0, "healdemon", { damageOnHeal: 2 });
+    const b = put(G.player, "back", 0, "healdemon", { damageOnHeal: 2 });
+    expect(healWatchers(G.player)).toEqual([a, b]);
+  });
+
+  it("やられた子は かぞえない", () => {
+    put(G.player, "front", 0, "healdemon", { damageOnHeal: 2, hp: 0 });
+    expect(healWatchers(G.player)).toEqual([]);
+  });
+
+  it("あいての ヒールデーモンは まきこまない", () => {
+    put(G.enemy, "front", 0, "healdemon", { damageOnHeal: 2 });
+    expect(healWatchers(G.player)).toEqual([]);
+    expect(healWatchers(G.enemy).length).toBe(1);
   });
 });
 
