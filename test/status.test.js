@@ -6,9 +6,12 @@
  * ここが 壊れると 遊べなくなる。
  */
 import { describe, it, expect, beforeEach } from "vitest";
-import { setG, makeGame, G, setFoeDeckId } from "../src/core/state.js";
+import {
+  setG, makeGame, G, setFoeDeckId,
+  grantShield, tickShield, shieldSum, shieldSoonest,
+} from "../src/core/state.js";
 import { CARD_MAP, CARDS } from "../src/core/cards.js";
-import { canPlay, costOf, frozenUnits, effectCandidates } from "../src/core/board.js";
+import { canPlay, costOf, frozenUnits, effectCandidates, shieldOf } from "../src/core/board.js";
 
 beforeEach(() => {
   setFoeDeckId("alice");
@@ -120,6 +123,56 @@ describe("出せるか の 判定", () => {
     put(G.enemy, "front", 0, "slime", { frozen: 2 });
     put(G.enemy, "front", 1, "slime", { frozen: 2 });
     expect(canPlay(G.player, "windragon")).toBe(true);    // 7-2=5
+  });
+});
+
+describe("まもりの かさねがけ", () => {
+  const veil = { value: 1, turns: 3 };
+  const lumi = { value: 2, turns: 3 };
+
+  it("かさねると たし算に なる", () => {
+    grantShield(G.player, veil);
+    expect(shieldSum(G.player.shield)).toBe(1);
+    grantShield(G.player, lumi);
+    expect(shieldSum(G.player.shield)).toBe(3);          // 1 + 2
+  });
+
+  it("おなじものを 2回でも たし算", () => {
+    grantShield(G.player, veil);
+    grantShield(G.player, veil);
+    expect(shieldSum(G.player.shield)).toBe(2);
+  });
+
+  it("ユニットは 自分のぶん ＋ 味方全体のぶん", () => {
+    const u = put(G.player, "front", 0, "slime");
+    grantShield(G.player, veil);                          // 全体 -1
+    grantShield(u, { value: 1, turns: 3 });               // 木の盾 -1
+    expect(shieldOf(u)).toBe(2);
+  });
+
+  it("リーダーは 全体のぶん ＋ 自分にかけたぶん", () => {
+    grantShield(G.player, lumi);                          // 全体 -2
+    grantShield(G.player, veil, "ownShield");             // 自分に -1
+    expect(shieldOf(G.player)).toBe(3);
+  });
+
+  it("のこりターンは べつべつに へる", () => {
+    grantShield(G.player, { value: 1, turns: 1 });         // すぐ きれる
+    grantShield(G.player, { value: 2, turns: 3 });         // まだ のこる
+    expect(shieldSum(G.player.shield)).toBe(3);
+    expect(shieldSoonest(G.player.shield)).toBe(1);
+
+    expect(tickShield(G.player)).toBe(1);                  // 1つ きれた
+    expect(shieldSum(G.player.shield)).toBe(2);            // 強いほうが のこる
+    expect(tickShield(G.player)).toBe(0);
+    expect(tickShield(G.player)).toBe(1);                  // のこりも きれた
+    expect(shieldSum(G.player.shield)).toBe(0);
+  });
+
+  it("まもりが 無いときは 0", () => {
+    expect(shieldSum(G.player.shield)).toBe(0);
+    expect(shieldOf(G.player)).toBe(0);
+    expect(tickShield(G.player)).toBe(0);
   });
 });
 

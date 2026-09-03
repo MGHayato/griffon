@@ -5,7 +5,7 @@
    ここには テストを書く（test/board.test.js）
    ========================================================= */
 import { CARD_MAP, MAX_SLOTS } from "./cards.js";
-import { G, opponentOf, isLeader } from "./state.js";
+import { G, opponentOf, isLeader, sideOf, shieldSum } from "./state.js";
 
 /** 生きているユニットだけ返す（やられた演出中のものは除外） */
 export function allUnits(side) {
@@ -90,6 +90,17 @@ export function legalAttackTargets(attackerSide) {
 
 export function canAttack(unit) {
   return unit.hp > 0 && !unit.sick && !unit.attacked && !unit.frozen && unit.atk > 0;
+}
+
+/**
+ * そのユニット／リーダーが へらせる ダメージの ぶん。
+ * ユニットは 自分にかかったぶん ＋ 味方全体のぶん。
+ * リーダーは 味方全体のぶん ＋ 自分にかけたぶん。
+ */
+export function shieldOf(t) {
+  if (isLeader(t)) return shieldSum(t.shield) + shieldSum(t.ownShield);
+  const s = sideOf(t);
+  return shieldSum(t.shield) + (s ? shieldSum(s.shield) : 0);
 }
 
 /** こおっている 敵ユニット */

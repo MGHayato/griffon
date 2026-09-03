@@ -14,12 +14,13 @@ import {
   getPlayerName, setPlayerName, DEFAULT_NAMES, NAME_MAX,
   playableDecks, getDeck, getMyDeckId, getFoeDeckId,
   setMyDeckId, setFoeDeckId, RANDOM_DECK, deckChoices,
+  grantShield, tickShield, shieldSum, shieldSoonest,
 } from "./core/state.js";
 import {
   allUnits, hasFreeSlot, laneOccupied, leaderBlocked, isCovered,
   laneUnits, unitLocation, candidateLanes, candidateRows,
   legalAttackTargets, canAttack, canPlay, effectCandidates,
-  costOf, frozenUnits,
+  costOf, frozenUnits, shieldOf,
 } from "./core/board.js";
 
 /** 新しい対戦を はじめる（状態づくりは core、演出は ここ） */
@@ -93,8 +94,8 @@ function startTurn(who) {
   if (other.noSpell) { other.noSpell = false; log(`${sideName(other)}の とくぎ封じが とけた`); }
 
   // まもり（ヴェール・木の盾）は 自分のターンが 来るたびに 1へる
-  tickShield(side);                  // 味方全体ぶん
-  tickShield(side, "ownShield");     // リーダー自身に かけたぶん
+  ageShield(side);                   // 味方全体ぶん
+  ageShield(side, "ownShield");      // リーダー自身に かけたぶん
   allUnits(side).forEach(u => {
     u.sick = false;
     u.attacked = false;
@@ -102,7 +103,7 @@ function startTurn(who) {
       u.frozen--;
       if (u.frozen <= 0) { delete u.frozen; log(`${u.name}の こおりが とけた`); }
     }
-    tickShield(u);
+    ageShield(u);
   });
 
   // 毒は 自分のターンの はじめに 1ダメージ。とけることは ない
@@ -207,7 +208,9 @@ function applyEffect(effect, targets, caster) {
   }
   if (effect.kind === "shield" && effect.target === "allySelf") {
     grantShield(side, effect);
-    log(`${sideName(side)}の 味方全体が ${effect.turns}ターン ダメージ-${effect.value}！`);
+    const now = shieldSum(side.shield);
+    log(`${sideName(side)}の 味方全体が ${effect.turns}ターン ダメージ-${effect.value}！`
+      + (now > effect.value ? `（かさねて -${now}）` : ""));
     render();
     return;
   }
@@ -231,8 +234,10 @@ function applyEffect(effect, targets, caster) {
     }
     else if (effect.kind === "shield") {
       grantShield(t, effect, shieldKey(t));
+      const now = shieldOf(t);
       floatNum(t, `まもり -${effect.value}`, "buff");
-      log(`${t.name || sideName(t)}は ${effect.turns}ターン ダメージ-${effect.value}！`);
+      log(`${t.name || sideName(t)}は ${effect.turns}ターン ダメージ-${effect.value}！`
+        + (now > effect.value ? `（あわせて -${now}）` : ""));
     }
     else if (effect.kind === "heal") healTarget(t, effect.value);
     else if (effect.kind === "buff") {
@@ -311,40 +316,22 @@ function applyLaneEffect(effect, foe, lane) {
 
 /* ----- まもり（うけるダメージを へらす） ----- */
 
-/* まもりは 2種類ある。
+/* まもりは 2種類の 入れものに ためる。
    side.shield    ヴェールなど 味方全体に かかるもの
    side.ownShield 木の盾を リーダー自身に かけたもの
-   ユニットは u.shield ひとつ（＋ 味方全体のぶん）。 */
+   ユニットは u.shield（＋ 味方全体のぶん）。
+   計算そのものは core/ に あるので、ここは 入れる場所と ログだけ。 */
 
 /** リーダーに かけるときは 全体のまもりと ぶつからない ほうへ */
 function shieldKey(t) { return isLeader(t) ? "ownShield" : "shield"; }
 
-/** そのユニット／リーダーが へらせる ダメージの ぶん */
-function shieldOf(t) {
-  if (isLeader(t)) {
-    return ((t.shield && t.shield.value) || 0)        // 味方全体ぶん
-         + ((t.ownShield && t.ownShield.value) || 0); // 自分にかけたぶん
-  }
-  let v = (t.shield && t.shield.value) || 0;
-  const s = sideOf(t);                                // 味方全体の まもりも かさなる
-  if (s && s.shield) v += s.shield.value;
-  return v;
-}
-
-/** まもりを かける。すでに ついているなら 強いほうを のこす */
-function grantShield(holder, effect, key = "shield") {
-  const now = holder[key];
-  if (now && now.value > effect.value) { now.turns = Math.max(now.turns, effect.turns); return; }
-  holder[key] = { value: effect.value, turns: effect.turns };
-}
-
-/** 自分のターンが 来るたびに まもりを 1へらす */
-function tickShield(holder, key = "shield") {
-  if (!holder[key]) return;
-  holder[key].turns--;
-  if (holder[key].turns <= 0) {
-    holder[key] = null;
-    log(`${holder.name || sideName(holder)}の まもりが きれた`);
+/** まもりを 1へらして、きれたら ログを 出す */
+function ageShield(holder, key = "shield") {
+  const ended = tickShield(holder, key);
+  if (ended > 0) {
+    const left = shieldSum(holder[key]);
+    log(`${holder.name || sideName(holder)}の まもりが きれた`
+      + (left > 0 ? `（のこり -${left}）` : ""));
   }
 }
 
@@ -1066,12 +1053,13 @@ function renderLeaders() {
     const ward = document.getElementById(`${who}-ward`);
     const mute = document.getElementById(`${who}-mute`);
     if (ward) {
-      ward.hidden = !side.shield;
-      if (side.shield) ward.textContent = `🛡 みかた -${side.shield.value}（あと${side.shield.turns}）`;
+      const cut = shieldSum(side.shield);
+      ward.hidden = cut === 0;
+      if (cut) ward.textContent = `🛡 みかた -${cut}（あと${shieldSoonest(side.shield)}）`;
     }
     if (mute) mute.hidden = !side.noSpell;
     // リーダー自身の まもりは 顔の ところに 小さく出す
-    document.getElementById(`${who}-leader`).classList.toggle("warded", !!side.ownShield);
+    document.getElementById(`${who}-leader`).classList.toggle("warded", shieldSum(side.ownShield) > 0);
   });
 }
 
@@ -1154,7 +1142,7 @@ function buildUnit(unit, side, row, i, targets) {
   const marks =
     (unit.frozen ? `<span class="mark ice" title="こおり">❄️</span>` : "") +
     (unit.poison ? `<span class="mark poison" title="どく">🟣</span>` : "") +
-    (unit.shield ? `<span class="mark ward" title="まもり">🛡️</span>` : "");
+    (shieldSum(unit.shield) ? `<span class="mark ward" title="まもり">🛡️</span>` : "");
 
   el.innerHTML =
     (marks ? `<div class="unit-marks">${marks}</div>` : "") +
@@ -1530,7 +1518,7 @@ const MANUAL = [
     rules: [
       ["こおり", "❄️が ついた ユニットは <b>つぎの じぶんのターンまで こうげきできない</b>。1回 やすんだら とける。"],
       ["どく",   "🟣が ついた ユニットは <b>じぶんのターンの はじめに 1ダメージ</b>。<b>とけない</b>ので、ほうっておくと じわじわ 死ぬ。まもりでは 防げない。"],
-      ["まもり", "🛡️が ついている間は <b>うけるダメージが へる</b>。じぶんのターンが 来るたびに のこりが 1へる。かさねがけしたら <b>強いほうが のこる</b>。"],
+      ["まもり", "🛡️が ついている間は <b>うけるダメージが へる</b>。じぶんのターンが 来るたびに のこりが 1へる。<b>かさねがけすると たし算</b>（ヴェールと ルミナスヴェールで -3）。それぞれ 別に かぞえるので、きれるのも バラバラ。"],
       ["とくぎ ふうじ", "🤫の 間は <b>とくぎカードが 出せない</b>。どうぐと ユニットは ふつうに 出せる。1ターンで とける。"],
     ],
   },

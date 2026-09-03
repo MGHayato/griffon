@@ -126,8 +126,8 @@ export function makeSide(isPlayer, deckId) {
     fatigue: 0,
     usedItems: [],        // これまで 使った どうぐ（サルベージが 拾いなおす）
     itemDiscount: 0,      // このターン だけの どうぐの ねびき
-    shield: null,         // { value, turns } 味方全体の まもり（ヴェール）
-    ownShield: null,      // { value, turns } リーダー自身の まもり（木の盾）
+    shield: [],           // 味方全体の まもり（ヴェール）。かさねると たし算
+    ownShield: [],        // リーダー自身の まもり（木の盾）
     noSpell: false,       // シャラプー中は とくぎを 出せない
   };
 }
@@ -235,6 +235,43 @@ function savePlayerName(name) {
 export function sideDeck(side) { return getDeck(side && side.deckId); }
 
 /** 名前。じぶんは よびな、あいては デッキの 名前 */
+/* -----------------------------------------------------------
+   まもり（うけるダメージを へらす）
+   ひとつの 入れものに ためていくので、かさねがけすると たし算に なる。
+   ヴェール(-1) と ルミナスヴェール(-2) を かさねたら -3。
+   のこりターンは それぞれ 別に かぞえる。
+   ----------------------------------------------------------- */
+
+/** まもりを かける */
+export function grantShield(holder, effect, key = "shield") {
+  if (!Array.isArray(holder[key])) holder[key] = [];
+  holder[key].push({ value: effect.value, turns: effect.turns });
+}
+
+/** ためた まもりの 合計 */
+export function shieldSum(list) {
+  return (list || []).reduce((s, w) => s + w.value, 0);
+}
+
+/** いちばん さきに きれる まもりの のこりターン */
+export function shieldSoonest(list) {
+  if (!list || !list.length) return 0;
+  return Math.min(...list.map(w => w.turns));
+}
+
+/**
+ * 自分のターンが 来るたびに 1へらす。
+ * きれた ぶんの 数を 返す（ログは よび出したがわで 出す）
+ */
+export function tickShield(holder, key = "shield") {
+  const list = holder[key];
+  if (!Array.isArray(list) || !list.length) return 0;
+  list.forEach(w => w.turns--);
+  const left = list.filter(w => w.turns > 0);
+  holder[key] = left;
+  return list.length - left.length;
+}
+
 export function sideName(side) {
   if (side.isPlayer) return getPlayerName();
   const d = sideDeck(side);
