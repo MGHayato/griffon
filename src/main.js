@@ -23,6 +23,84 @@ import {
   costOf, frozenUnits, shieldOf, summonEffect, matchesFilter, healWatchers,
 } from "./core/board.js";
 
+/* =========================================================
+   ためし対戦（デッキの 相性しらべ）
+   ふつうに 遊ぶときは 出てこない。
+   URLに ?sim=alice,snow&n=10 と つけると、
+   CPU どうしで 何回か 戦わせて 勝敗を かぞえる。
+   結果は window.SIM_RESULT に 入る。
+   ========================================================= */
+const SIM = { on: false, n: 10, queue: [], rows: [],
+              me: null, foe: null, left: 0,
+              win: 0, lose: 0, draw: 0, turns: [] };
+
+/** ためし対戦では 演出を またない */
+function aiWait(ms) { return SIM.on ? 0 : ms; }
+
+/** いまの 見とおしを 外から 読めるように しておく */
+function simReport(done) {
+  window.SIM_RESULT = {
+    finished: done,
+    rest: SIM.queue.length,
+    now: SIM.me ? `${SIM.me} vs ${SIM.foe}（あと${SIM.left}）` : null,
+    rows: SIM.rows,
+  };
+}
+
+/** つぎの 組み合わせへ。もう 無ければ 終わり */
+function simNext() {
+  const pair = SIM.queue.shift();
+  if (!pair) { SIM.on = false; SIM.me = null; simReport(true); return false; }
+  SIM.me  = setMyDeckId(pair[0]);
+  SIM.foe = setFoeDeckId(pair[1]);
+  SIM.left = SIM.n;
+  SIM.win = SIM.lose = SIM.draw = 0;
+  SIM.turns = [];
+  return true;
+}
+
+function simFinished(result) {
+  if (result === "win")  SIM.win++;
+  else if (result === "lose") SIM.lose++;
+  else SIM.draw++;
+  SIM.turns.push(G.turnCount);
+  SIM.left--;
+
+  if (SIM.left > 0) { simReport(false); setTimeout(newGame, 0); return; }
+
+  // この 組み合わせは 終わり。結果を しまって つぎへ
+  SIM.rows.push({
+    me: SIM.me, foe: SIM.foe, games: SIM.turns.length,
+    win: SIM.win, lose: SIM.lose, draw: SIM.draw,
+    avgTurns: Math.round(SIM.turns.reduce((a, b) => a + b, 0) / SIM.turns.length * 10) / 10,
+  });
+  if (simNext()) { simReport(false); setTimeout(newGame, 0); }
+  else simReport(true);
+}
+
+/**
+ * URLの ?sim=... を 読んで したくする
+ *   ?sim=alice,snow&n=10   1組だけ
+ *   ?sim=all&n=50          ぜんぶの 組み合わせ
+ */
+function setupSim() {
+  const q = new URLSearchParams(location.search);
+  const pair = q.get("sim");
+  if (!pair) return false;
+  SIM.n = Number(q.get("n") || 10);
+  SIM.rows = [];
+  if (pair === "all") {
+    const ids = playableDecks().map(d => d.id);
+    for (const me of ids) for (const foe of ids) SIM.queue.push([me, foe]);
+  } else {
+    SIM.queue = [pair.split(",")];
+  }
+  SIM.on = true;
+  if (!simNext()) return false;
+  simReport(false);
+  return true;
+}
+
 /** 新しい対戦を はじめる（状態づくりは core、演出は ここ） */
 function newGame() {
   setG(makeGame());
@@ -118,6 +196,14 @@ function startTurn(who) {
 
   log(`━ ${sideName(side)}の ターン ━`);
   clearPick();
+
+  // ためし対戦のときは じぶん側も CPUが 動かす
+  if (SIM.on) {
+    G.busy = true;
+    render();
+    setTimeout(() => aiStep(side), aiWait(800));
+    return;
+  }
 
   if (who === "enemy") {
     G.busy = true;
@@ -448,6 +534,7 @@ function checkGameOver() {
 function finish(result) {
   G.over = true;
   G.busy = true;
+  if (SIM.on) { simFinished(result); return; }     // ためし対戦は 画面を 出さずに つぎへ
   setTimeout(() => {
     const t = document.getElementById("modal-title");
     const s = document.getElementById("modal-sub");
@@ -734,9 +821,14 @@ function onUnitClick(unit) {
 /* =========================================================
    CPU
    ========================================================= */
-function aiStep() {
+/**
+ * CPUの 1手。
+ * side を わたすので、あいて側だけでなく 自分側も 動かせる
+ * （デッキの 相性しらべで 両方を CPUに 任せるのに つかう）。
+ */
+function aiStep(E = G.enemy) {
   if (G.over) { G.busy = false; return; }
-  const E = G.enemy;
+  const next = () => aiStep(E);
 
   // 1. カードを出す（MPを使い切る方向で）
   const playable = E.hand
@@ -745,33 +837,37 @@ function aiStep() {
     .sort((a, b) => b.c.cost - a.c.cost);
 
   if (playable.length > 0) {
-    aiPlayCard(aiChooseCard(playable));
+    aiPlayCard(aiChooseCard(playable, E), E);
     render();
-    setTimeout(aiStep, 780);
+    setTimeout(next, aiWait(780));
     return;
   }
 
   // 2. 攻撃する
   const attacker = allUnits(E).find(u => canAttack(u));
   if (attacker) {
-    const target = aiChooseAttackTarget(attacker);
+    const target = aiChooseAttackTarget(attacker, E);
     if (target) {
       doAttack(attacker, target);
-      setTimeout(aiStep, 780);
+      setTimeout(next, aiWait(780));
     } else {
       attacker.attacked = true;
-      setTimeout(aiStep, 60);
+      setTimeout(next, aiWait(60));
     }
     return;
   }
 
   // 3. ターンを渡す
-  setTimeout(() => { if (!G.over) startTurn("player"); else G.busy = false; }, 550);
+  setTimeout(() => {
+    if (G.over) { G.busy = false; return; }
+    startTurn(E.isPlayer ? "enemy" : "player");
+  }, aiWait(550));
 }
 
 /** ムダ打ちを避ける（満タンなのに回復、など） */
 function aiIsWorthPlaying(E, c) {
   if (c.type === "unit") return true;      // ユニットは いつでも 出す
+  const foe = opponentOf(E);
   const e = c.effect;
   if (e.kind === "heal") {
     const hurtAlly = allUnits(E).some(u => u.hp < u.maxHp);
@@ -781,23 +877,23 @@ function aiIsWorthPlaying(E, c) {
   if (e.kind === "buff")    return allUnits(E).length >= 2;        // 1体だけなら温存
   if (e.kind === "buffAtk") return allUnits(E).some(u => !u.sick); // すぐ殴れる子がいるとき
   if (e.kind === "draw")    return E.hand.length + e.value - 1 <= HAND_MAX;
-  if (e.kind === "swap")    return aiChooseLane(e) !== null;
+  if (e.kind === "swap")    return aiChooseLane(e, E) !== null;
   if (e.kind === "search") {
     if (E.hand.length + e.value - 1 > HAND_MAX) return false;
     // 撃つ前に タマが あるか 確かめる
     return E.deck.some(id => matchesFilter(CARD_MAP[id], e));
   }
   // こおらせるのは これから殴ってきそうな相手がいるときだけ
-  if (e.kind === "freeze")  return allUnits(G.player).some(u => u.atk > 0 && !u.frozen);
+  if (e.kind === "freeze")  return allUnits(foe).some(u => u.atk > 0 && !u.frozen);
   // 毒は 長生きしそうな 相手に かけたい
-  if (e.kind === "poison")  return allUnits(G.player).some(u => !u.poison && u.hp >= 2);
+  if (e.kind === "poison")  return allUnits(foe).some(u => !u.poison && u.hp >= 2);
   // まもりは 守るものが あるときだけ（リーダーも えらべるなら いつでも 意味がある）
   if (e.kind === "shield") {
     if (e.target === "allySelf" || e.target === "allyAny") return true;
     return allUnits(E).length > 0;
   }
   // とくぎ封じは 相手が まだ 手札を 持っているとき
-  if (e.kind === "silence") return G.player.hand.length > 0;
+  if (e.kind === "silence") return foe.hand.length > 0;
   // ねびきは そのターンに 出せる どうぐが あってこそ
   if (e.kind === "discount") {
     return E.hand.some(id => {
@@ -809,9 +905,9 @@ function aiIsWorthPlaying(E, c) {
 }
 
 /** たて一列の効果で どのレーンを ねらうか */
-function aiChooseLane(effect) {
-  const P = G.player;
-  const lanes = candidateLanes(G.enemy);
+function aiChooseLane(effect, E = G.enemy) {
+  const P = opponentOf(E);
+  const lanes = candidateLanes(E);
   if (!lanes.length) return null;
 
   if (effect.kind === "swap") {
@@ -827,17 +923,17 @@ function aiChooseLane(effect) {
 }
 
 /** よこ一列の効果で ぜんれつ／こうれつ どちらを ねらうか */
-function aiChooseRow(effect) {
-  const P = G.player;
-  const rows = candidateRows(G.enemy);
+function aiChooseRow(effect, E = G.enemy) {
+  const P = opponentOf(E);
+  const rows = candidateRows(E);
   if (!rows.length) return null;
   const score = (row) => P[row].filter(u => u && u.hp > 0).reduce((s, u) =>
     s + Math.min(u.hp, effect.value) + (u.hp <= effect.value ? 3 + u.atk : 0), 0);
   return rows.slice().sort((a, b) => score(b) - score(a))[0];
 }
 
-function aiChooseCard(playable) {
-  const foes = allUnits(G.player);
+function aiChooseCard(playable, E = G.enemy) {
+  const foes = allUnits(opponentOf(E));
 
   // まとめて倒せるなら全体攻撃
   const storm = playable.find(x => {
@@ -850,8 +946,8 @@ function aiChooseCard(playable) {
   for (const x of playable) {
     const e = summonEffect(x.c);
     if (e && e.kind === "damage" && e.target === "enemyLane") {
-      const lane = aiChooseLane(e);
-      if (lane !== null && laneUnits(G.player, lane).filter(u => u.hp <= e.value).length >= 2) return x;
+      const lane = aiChooseLane(e, E);
+      if (lane !== null && laneUnits(opponentOf(E), lane).filter(u => u.hp <= e.value).length >= 2) return x;
     }
   }
 
@@ -865,8 +961,8 @@ function aiChooseCard(playable) {
   return playable[0];   // 一番コストが高いもの
 }
 
-function aiPlayCard(pick) {
-  const E = G.enemy;
+function aiPlayCard(pick, E = G.enemy) {
+  const foe = opponentOf(E);
   const c = pick.c;
   E.mp -= costOf(E, c.id);
   E.hand.splice(pick.i, 1);
@@ -874,12 +970,12 @@ function aiPlayCard(pick) {
 
   const resolve = (e) => {
     if (e.target === "enemyLane") {
-      const lane = aiChooseLane(e);
-      if (lane !== null) applyLaneEffect(e, G.player, lane);
+      const lane = aiChooseLane(e, E);
+      if (lane !== null) applyLaneEffect(e, foe, lane);
     }
     else if (e.target === "enemyRow") {
-      const row = aiChooseRow(e);
-      if (row !== null) applyRowEffect(e, G.player, row);
+      const row = aiChooseRow(e, E);
+      if (row !== null) applyRowEffect(e, foe, row);
     }
     else if (wholeTargets(e, E))         applyEffect(e, wholeTargets(e, E), E);
     else if (e.target === "self" || e.target === "allySelf") applyEffect(e, [], E);
@@ -887,7 +983,7 @@ function aiPlayCard(pick) {
       // 「敵2体を凍結」のように 何回か えらぶ 効果は そのぶん くりかえす
       const times = e.times || 1;
       for (let k = 0; k < times; k++) {
-        const t = aiChooseEffectTarget(e);
+        const t = aiChooseEffectTarget(e, E);
         if (!t) break;
         applyEffect(e, [t], E);
       }
@@ -900,7 +996,7 @@ function aiPlayCard(pick) {
     const summonE = summonEffect(c);      // 死亡時こうかは ここでは 出さない
     if (summonE) resolve(summonE);
   } else {
-    log(`${sideName(G.enemy)}は「${c.name}」を ${c.type === "item" ? "つかった" : "となえた"}！`);
+    log(`${sideName(E)}は「${c.name}」を ${c.type === "item" ? "つかった" : "となえた"}！`);
     resolve(c.effect);
   }
 }
@@ -934,60 +1030,62 @@ function aiPlaceUnit(E, c) {
   return best;
 }
 
-function aiChooseEffectTarget(effect) {
+function aiChooseEffectTarget(effect, E = G.enemy) {
+  const foe = opponentOf(E);
   if (effect.kind === "damage") {
-    const foes = allUnits(G.player);
+    const foes = allUnits(foe);
     const canHitLeader = effect.target === "enemyAny";
 
-    if (canHitLeader && G.player.hp <= effect.value) return G.player;   // とどめ
-    if (foes.length === 0) return canHitLeader ? G.player : null;
+    if (canHitLeader && foe.hp <= effect.value) return foe;              // とどめ
+    if (foes.length === 0) return canHitLeader ? foe : null;
 
     const killable = foes.filter(u => u.hp <= effect.value);
     if (killable.length > 0) return killable.slice().sort((a, b) => b.atk - a.atk)[0];
-    if (canHitLeader) return G.player;                                  // 倒せないなら 顔を殴る
+    if (canHitLeader) return foe;                                       // 倒せないなら 顔を殴る
     return foes.slice().sort((a, b) => b.atk - a.atk)[0];
   }
   if (effect.kind === "heal") {
-    const hurt = allUnits(G.enemy).filter(u => u.hp < u.maxHp)
+    const hurt = allUnits(E).filter(u => u.hp < u.maxHp)
                    .sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
     if (effect.target === "allyAny") {
-      if (G.enemy.hp <= 12) return G.enemy;
-      return hurt[0] || G.enemy;
+      if (E.hp <= 12) return E;
+      return hurt[0] || E;
     }
-    return hurt[0] || allUnits(G.enemy)[0] || null;
+    return hurt[0] || allUnits(E)[0] || null;
   }
   if (effect.kind === "buffAtk") {
     // すぐ殴れる子のうち 一番強いやつを さらに強く
-    const ready = allUnits(G.enemy).filter(u => !u.sick);
-    return (ready.length ? ready : allUnits(G.enemy)).sort((a, b) => b.atk - a.atk)[0] || null;
+    const ready = allUnits(E).filter(u => !u.sick);
+    return (ready.length ? ready : allUnits(E)).sort((a, b) => b.atk - a.atk)[0] || null;
   }
   if (effect.kind === "freeze") {
     // まだ こおっていない、いちばん 強い子から 止める
-    const foes = allUnits(G.player).filter(u => !u.frozen && u.atk > 0);
-    return foes.sort((a, b) => b.atk - a.atk)[0] || allUnits(G.player)[0] || null;
+    const foes = allUnits(foe).filter(u => !u.frozen && u.atk > 0);
+    return foes.sort((a, b) => b.atk - a.atk)[0] || allUnits(foe)[0] || null;
   }
   if (effect.kind === "poison") {
     // かたくて 長生きしそうな 相手ほど 毒が きく
-    const foes = allUnits(G.player).filter(u => !u.poison);
+    const foes = allUnits(foe).filter(u => !u.poison);
     return foes.sort((a, b) => b.hp - a.hp)[0] || null;
   }
   if (effect.kind === "shield") {
     // けずられてきたら 自分を、そうでなければ いちばん 前で 殴られそうな 子を まもる
-    const mine = allUnits(G.enemy);
-    if (effect.target === "allyAny" && (G.enemy.hp <= 8 || !mine.length)) return G.enemy;
+    const mine = allUnits(E);
+    if (effect.target === "allyAny" && (E.hp <= 8 || !mine.length)) return E;
     return mine.slice().sort((a, b) => b.atk - a.atk)[0]
-        || (effect.target === "allyAny" ? G.enemy : null);
+        || (effect.target === "allyAny" ? E : null);
   }
   return null;
 }
 
-function aiChooseAttackTarget(attacker) {
-  const legal = legalAttackTargets(G.enemy);
+function aiChooseAttackTarget(attacker, E = G.enemy) {
+  const foe = opponentOf(E);
+  const legal = legalAttackTargets(E);
   if (legal.length === 0) return null;
   const units  = legal.filter(t => !isLeader(t));
-  const leader = legal.includes(G.player) ? G.player : null;
+  const leader = legal.includes(foe) ? foe : null;
 
-  if (leader && G.player.hp <= attacker.atk) return leader;                    // とどめ
+  if (leader && foe.hp <= attacker.atk) return leader;                         // とどめ
   const freeKill = units.filter(u => u.hp <= attacker.atk && u.atk < attacker.hp)
                         .sort((a, b) => b.atk - a.atk)[0];
   if (freeKill) return freeKill;                                               // 一方的に倒せる
@@ -1840,4 +1938,6 @@ document.getElementById("screen").addEventListener("click", (e) => {
   }
 });
 
-showTitle();
+// ?sim=... が ついていたら タイトルを 出さずに ためし対戦を はじめる
+if (setupSim()) newGame();
+else showTitle();
