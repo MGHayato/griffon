@@ -241,21 +241,36 @@ describe("召喚時と 死亡時の 見わけ", () => {
   });
 });
 
-describe("まもりの かさねがけ", () => {
+describe("まもり", () => {
   const veil = { value: 1, turns: 3 };
   const lumi = { value: 2, turns: 3 };
 
-  it("かさねると たし算に なる", () => {
-    grantShield(G.player, veil);
-    expect(shieldSum(G.player.shield)).toBe(1);
-    grantShield(G.player, lumi);
-    expect(shieldSum(G.player.shield)).toBe(3);          // 1 + 2
+  it("ヴェール中は ヴェール系を 手札から えらべない", () => {
+    expect(canPlay(G.player, "veil")).toBe(true);
+    expect(canPlay(G.player, "lumiveil")).toBe(true);
+
+    grantShield(G.player, veil);                          // ヴェールを かけた
+    expect(canPlay(G.player, "veil")).toBe(false);
+    expect(canPlay(G.player, "lumiveil")).toBe(false);    // 強いほうも 出せない
   });
 
-  it("おなじものを 2回でも たし算", () => {
+  it("ルミナスヴェール中も おなじ", () => {
+    grantShield(G.player, lumi);
+    expect(canPlay(G.player, "veil")).toBe(false);
+    expect(canPlay(G.player, "lumiveil")).toBe(false);
+  });
+
+  it("きれたら また 出せる", () => {
+    grantShield(G.player, { value: 1, turns: 1 });
+    expect(canPlay(G.player, "veil")).toBe(false);
+    tickShield(G.player);                                  // 1ターン すぎて きれた
+    expect(canPlay(G.player, "veil")).toBe(true);
+  });
+
+  it("木の盾は ヴェール中でも 出せる（1体だけの まもりは べつ）", () => {
+    put(G.player, "front", 0, "slime");
     grantShield(G.player, veil);
-    grantShield(G.player, veil);
-    expect(shieldSum(G.player.shield)).toBe(2);
+    expect(canPlay(G.player, "woodshield")).toBe(true);
   });
 
   it("ユニットは 自分のぶん ＋ 味方全体のぶん", () => {

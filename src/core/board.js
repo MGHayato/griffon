@@ -166,6 +166,9 @@ export function canPlay(side, cardId) {
   if (e.target === "enemyFrozen" && frozenUnits(side).length === 0) return false;
   // 拾うものが 無いのに サルベージは 出せない
   if (e.kind === "salvage" && !(side.usedItems && side.usedItems.length)) return false;
+  // 味方全体の まもり（ヴェール系）は かさねがけ できない。
+  // かかっている あいだは 手札で えらべなくなる
+  if (e.kind === "shield" && e.target === "allySelf" && shieldSum(side.shield) > 0) return false;
   return true;
 }
 
