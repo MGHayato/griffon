@@ -11,7 +11,7 @@ import {
   grantShield, tickShield, shieldSum, shieldSoonest,
 } from "../src/core/state.js";
 import { CARD_MAP, CARDS } from "../src/core/cards.js";
-import { canPlay, costOf, frozenUnits, effectCandidates, shieldOf, summonEffect } from "../src/core/board.js";
+import { canPlay, costOf, frozenUnits, effectCandidates, shieldOf, summonEffect, matchesFilter } from "../src/core/board.js";
 
 beforeEach(() => {
   setFoeDeckId("alice");
@@ -123,6 +123,59 @@ describe("出せるか の 判定", () => {
     put(G.enemy, "front", 0, "slime", { frozen: 2 });
     put(G.enemy, "front", 1, "slime", { frozen: 2 });
     expect(canPlay(G.player, "windragon")).toBe(true);    // 7-2=5
+  });
+});
+
+describe("デッキから さがす（サーチ）", () => {
+  const only = f => ({ kind: "search", value: 1, target: "self", filter: f });
+
+  it("どうぐを さがすと どうぐしか 出てこない", () => {
+    const e = only("item");
+    for (const c of CARDS) {
+      expect(matchesFilter(c, e), c.name).toBe(c.type === "item");
+    }
+  });
+
+  it("ユニットを さがすと ユニットだけ", () => {
+    const e = only("unit");
+    for (const c of CARDS) {
+      expect(matchesFilter(c, e), c.name).toBe(c.type === "unit");
+    }
+  });
+
+  it("とくぎを さがすと とくぎだけ（どうぐは 入らない）", () => {
+    const e = only("spell");
+    expect(matchesFilter(CARD_MAP["flare"], e)).toBe(true);    // とくぎ
+    expect(matchesFilter(CARD_MAP["water"], e)).toBe(false);   // どうぐ
+    expect(matchesFilter(CARD_MAP["slime"], e)).toBe(false);   // ユニット
+  });
+
+  it("コストの 上限も みる", () => {
+    const e = { kind: "search", value: 2, target: "self", filter: "unit", maxCost: 1 };
+    expect(matchesFilter(CARD_MAP["slime"], e)).toBe(true);     // 0
+    expect(matchesFilter(CARD_MAP["rabbit"], e)).toBe(true);    // 1
+    expect(matchesFilter(CARD_MAP["wolf"], e)).toBe(false);     // 2
+  });
+
+  it("filter が 無ければ 何でも 通る", () => {
+    const e = { kind: "search", value: 1, target: "self" };
+    expect(matchesFilter(CARD_MAP["slime"], e)).toBe(true);
+    expect(matchesFilter(CARD_MAP["water"], e)).toBe(true);
+    expect(matchesFilter(CARD_MAP["flare"], e)).toBe(true);
+  });
+
+  it("ぬすっとゴブリンは どうぐを さがす", () => {
+    const e = CARD_MAP["thiefgoblin"].effect;
+    expect(e.filter).toBe("item");
+    expect(matchesFilter(CARD_MAP["water"], e)).toBe(true);
+    expect(matchesFilter(CARD_MAP["slime"], e)).toBe(false);
+  });
+
+  it("パンくずは コスト1以下の ユニットを さがす", () => {
+    const e = CARD_MAP["crumb"].effect;
+    expect(matchesFilter(CARD_MAP["rabbit"], e)).toBe(true);    // ユニット1
+    expect(matchesFilter(CARD_MAP["wolf"], e)).toBe(false);     // ユニット2
+    expect(matchesFilter(CARD_MAP["water"], e)).toBe(false);    // どうぐ0
   });
 });
 

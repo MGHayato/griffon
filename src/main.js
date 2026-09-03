@@ -20,7 +20,7 @@ import {
   allUnits, hasFreeSlot, laneOccupied, leaderBlocked, isCovered,
   laneUnits, unitLocation, candidateLanes, candidateRows,
   legalAttackTargets, canAttack, canPlay, effectCandidates,
-  costOf, frozenUnits, shieldOf, summonEffect,
+  costOf, frozenUnits, shieldOf, summonEffect, matchesFilter,
 } from "./core/board.js";
 
 /** 新しい対戦を はじめる（状態づくりは core、演出は ここ） */
@@ -268,13 +268,7 @@ function applyEffect(effect, targets, caster) {
 function searchDeck(side, effect) {
   let found = 0;
   for (let i = 0; i < effect.value; i++) {
-    const at = side.deck.findIndex(id => {
-      const c = CARD_MAP[id];
-      if (effect.filter === "unit"  && c.type !== "unit")  return false;
-      if (effect.filter === "spell" && c.type === "unit") return false;
-      if (effect.maxCost !== undefined && c.cost > effect.maxCost) return false;
-      return true;
-    });
+    const at = side.deck.findIndex(id => matchesFilter(CARD_MAP[id], effect));
     if (at < 0) break;
     const [id] = side.deck.splice(at, 1);
     if (side.hand.length < HAND_MAX) { side.hand.push(id); found++; }
@@ -760,14 +754,8 @@ function aiIsWorthPlaying(E, c) {
   if (e.kind === "swap")    return aiChooseLane(e) !== null;
   if (e.kind === "search") {
     if (E.hand.length + e.value - 1 > HAND_MAX) return false;
-    return E.deck.some(id => {                        // 撃つ前に タマがあるか 確かめる
-      const t = CARD_MAP[id];
-      if (e.filter === "unit"  && t.type !== "unit")  return false;
-      if (e.filter === "spell" && t.type === "unit") return false;
-      if (e.filter === "item"  && t.type !== "item") return false;
-      if (e.maxCost !== undefined && t.cost > e.maxCost) return false;
-      return true;
-    });
+    // 撃つ前に タマが あるか 確かめる
+    return E.deck.some(id => matchesFilter(CARD_MAP[id], e));
   }
   // こおらせるのは これから殴ってきそうな相手がいるときだけ
   if (e.kind === "freeze")  return allUnits(G.player).some(u => u.atk > 0 && !u.frozen);

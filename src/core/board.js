@@ -104,6 +104,19 @@ export function shieldOf(t) {
 }
 
 /**
+ * サーチの 条件に あう カードか。
+ * filter は "unit" / "item" / "spell" の どれか。書いていなければ 何でも通る。
+ * maxCost が あれば コストの 上限も 見る。
+ */
+export function matchesFilter(card, effect) {
+  if (!card) return false;
+  const f = effect.filter;
+  if (f && card.type !== f) return false;
+  if (effect.maxCost !== undefined && card.cost > effect.maxCost) return false;
+  return true;
+}
+
+/**
  * よびだした ときに すぐ 発動する 効果。
  * 「死亡時：〜」は やられるまで 出番が 無いので ここでは 返さない。
  */
