@@ -494,6 +494,55 @@
   #log { cursor: pointer; transition: background .12s; }
   #log:hover { background: rgba(242,193,78,.08); }
 
+  /* ===== 山札が つきたとき の ダメージ札 ===== */
+  .fatigue-card {
+    width: 74px; height: 104px;
+    flex-shrink: 0;
+    border-radius: 9px;
+    background: linear-gradient(170deg, #6b1b2c 0%, #3d0d1a 55%, #1a0409 100%);
+    border: 3px solid var(--crimson);
+    box-shadow: 0 0 16px rgba(255,95,109,.7), 0 4px 12px rgba(0,0,0,.7);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 4px;
+    position: relative;
+    animation: fatigueIn .3s cubic-bezier(.2,1.4,.5,1) both;
+  }
+  /* 引いてくる（下から せり上がる） */
+  @keyframes fatigueIn {
+    from { opacity: 0; transform: translateY(34px) scale(.7) rotate(-8deg); }
+    to   { opacity: 1; transform: translateY(0) scale(1) rotate(0); }
+  }
+  .fatigue-art { font-size: 30px; line-height: 1; filter: drop-shadow(0 2px 3px #000); }
+  .fatigue-dmg {
+    font-family: var(--font-dot);
+    font-size: 32px; line-height: 1;
+    color: #fff;
+    text-shadow: 0 0 8px var(--crimson), 0 2px 3px #000;
+    font-variant-numeric: tabular-nums;
+  }
+  .fatigue-dmg::before { content: "-"; }
+  /* くらった あと 燃えて 消える */
+  .fatigue-card.burn { animation: fatigueBurn .5s ease-in forwards; }
+  @keyframes fatigueBurn {
+    0%   { opacity: 1; transform: scale(1); filter: brightness(1); }
+    35%  { opacity: 1; transform: scale(1.16) rotate(3deg); filter: brightness(2.2) saturate(1.6); }
+    100% { opacity: 0; transform: scale(.5) translateY(-24px) rotate(12deg); filter: brightness(3); }
+  }
+  /* あいて側は 手札が 小さいので それに あわせる */
+  .fatigue-card.foe {
+    width: 30px; height: 42px;
+    border-width: 2px; border-radius: 5px;
+    gap: 0;
+  }
+  .fatigue-card.foe .fatigue-art { font-size: 14px; }
+  .fatigue-card.foe .fatigue-dmg { font-size: 16px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fatigue-card { animation: none; }
+    .fatigue-card.burn { animation: none; opacity: 0; }
+  }
+
   /* ===== ログを さかのぼる 画面 ===== */
   .log-list {
     display: flex; flex-direction: column;

@@ -138,6 +138,7 @@ function draw(side) {
     side.fatigue++;
     side.hp -= side.fatigue;
     log(`${sideName(side)}は 山札が つきて ${side.fatigue}ダメージ！`);
+    showFatigueCard(side, side.fatigue);
     checkGameOver();
     return;
   }
@@ -1975,6 +1976,33 @@ function showDeckPicker(start = false) {
     "◀ ▶ で えらぶ。えらんだものは この端末に おぼえておくよ。";
   document.getElementById("modal-btn").textContent = start ? "たたかう" : "きめる";
   document.getElementById("overlay").classList.add("show");
+}
+
+/* =========================================================
+   山札が つきたとき の 演出
+   ダメージの 数字が 書いてある 札を 1枚 引いて、
+   くらったあと すぐに 燃えて 消える。
+   ========================================================= */
+const FATIGUE_HOLD = 800;    // 見せておく 長さ
+const FATIGUE_BURN = 500;    // 消えるまで
+
+function showFatigueCard(side, damage) {
+  const hand = document.getElementById(side.isPlayer ? "player-hand" : "enemy-hand");
+  if (!hand) return;
+
+  const el = document.createElement("div");
+  el.className = "fatigue-card" + (side.isPlayer ? "" : " foe");
+  el.innerHTML =
+    `<div class="fatigue-art">💀</div>` +
+    `<div class="fatigue-dmg">${damage}</div>`;
+  hand.appendChild(el);
+
+  // くらってから 燃やす
+  setTimeout(() => {
+    el.classList.add("burn");
+    shakeEl(leaderEl(side));
+  }, FATIGUE_HOLD);
+  setTimeout(() => el.remove(), FATIGUE_HOLD + FATIGUE_BURN);
 }
 
 /** 何行を さかのぼって 見せるか */
