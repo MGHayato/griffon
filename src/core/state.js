@@ -235,6 +235,31 @@ function savePlayerName(name) {
 export function sideDeck(side) { return getDeck(side && side.deckId); }
 
 /* -----------------------------------------------------------
+   こおり
+   こおった子は 自分のターンを 1回 休む。
+   すでに こおっている子を もう一度 こおらせると、
+   のこりは 「かけ直した ぶん」に 入れかわる（たし算には ならない）。
+   おなじターンに 2回 かけても のこりは 変わらない。
+   ----------------------------------------------------------- */
+
+/** こおりの ながさ。かけた ときの のこりターン */
+export const FREEZE_TURNS = 2;
+
+/** こおらせる。かかっていても おなじ長さに 入れなおす（上書き） */
+export function freezeUnit(unit) {
+  unit.frozen = FREEZE_TURNS;
+  return unit.frozen;
+}
+
+/** 自分のターンが 来たので 1へらす。とけたら true */
+export function thawUnit(unit) {
+  if (!unit.frozen) return false;
+  unit.frozen--;
+  if (unit.frozen <= 0) { delete unit.frozen; return true; }
+  return false;
+}
+
+/* -----------------------------------------------------------
    そうび
    武器ひとつ、盾ひとつ。おなじ場所に つけると 前のは 外れる。
    ターンでは きれない（ずっと つく）。

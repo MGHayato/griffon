@@ -15,6 +15,7 @@ import {
   playableDecks, getDeck, getMyDeckId, getFoeDeckId,
   setMyDeckId, setFoeDeckId, RANDOM_DECK, deckChoices,
   grantShield, tickShield, shieldSum, shieldSoonest, equipTo,
+  freezeUnit, thawUnit,
 } from "./core/state.js";
 import {
   allUnits, hasFreeSlot, laneOccupied, leaderBlocked, isCovered,
@@ -178,10 +179,8 @@ function startTurn(who) {
   allUnits(side).forEach(u => {
     u.sick = false;
     u.attacked = false;
-    if (u.frozen) {                       // こおりは 自分のターンが 来るたびに 1へる
-      u.frozen--;
-      if (u.frozen <= 0) { delete u.frozen; log(`${u.name}の こおりが とけた`); }
-    }
+    // こおりは 自分のターンが 来るたびに 1へる
+    if (thawUnit(u)) log(`${u.name}の こおりが とけた`);
     ageShield(u);
   });
 
@@ -315,9 +314,11 @@ function applyEffect(effect, targets, caster) {
     else if (effect.kind === "freeze") {
       if (effect.value > 0) dealDamage(t, effect.value);
       if (t.hp > 0) {
-        t.frozen = 2;                 // 自分の次のターンが 終わるまで 攻撃できない
-        floatNum(t, "こおった！", "freeze");
-        log(`${t.name}は こおりついた！`);
+        // すでに こおっていても おなじ長さに 入れなおす（上書き）
+        const again = !!t.frozen;
+        freezeUnit(t);
+        floatNum(t, again ? "こおりなおし！" : "こおった！", "freeze");
+        log(again ? `${t.name}の こおりが かけ直された！` : `${t.name}は こおりついた！`);
       }
     }
     else if (effect.kind === "poison") {

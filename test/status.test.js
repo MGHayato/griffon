@@ -9,9 +9,10 @@ import { describe, it, expect, beforeEach } from "vitest";
 import {
   setG, makeGame, G, setFoeDeckId,
   grantShield, tickShield, shieldSum, shieldSoonest, equipTo,
+  freezeUnit, thawUnit,
 } from "../src/core/state.js";
 import { CARD_MAP, CARDS } from "../src/core/cards.js";
-import { canPlay, costOf, frozenUnits, effectCandidates, shieldOf, summonEffect, matchesFilter, healWatchers, equipOf, armorCut } from "../src/core/board.js";
+import { canPlay, costOf, frozenUnits, effectCandidates, shieldOf, summonEffect, matchesFilter, healWatchers, equipOf, armorCut, canAttack } from "../src/core/board.js";
 
 beforeEach(() => {
   setFoeDeckId("alice");
@@ -238,6 +239,63 @@ describe("召喚時と 死亡時の 見わけ", () => {
     const deaths = CARDS.filter(c => c.effect && c.effect.when === "death");
     expect(deaths.length).toBeGreaterThan(0);
     for (const c of deaths) expect(summonEffect(c), c.name).toBeNull();
+  });
+});
+
+describe("こおりの かけ直し", () => {
+  it("かけると のこり 2", () => {
+    const u = put(G.enemy, "front", 0, "wolf");
+    expect(freezeUnit(u)).toBe(2);
+    expect(u.frozen).toBe(2);
+  });
+
+  it("おなじターンに 2回 かけても のこりは 変わらない", () => {
+    const u = put(G.enemy, "front", 0, "wolf");
+    freezeUnit(u);
+    expect(u.frozen).toBe(2);
+    freezeUnit(u);                        // ターンを またがずに もう一度
+    expect(u.frozen).toBe(2);             // のびない（たし算に ならない）
+  });
+
+  it("3回でも 4回でも 変わらない", () => {
+    const u = put(G.enemy, "front", 0, "wolf");
+    for (let i = 0; i < 4; i++) freezeUnit(u);
+    expect(u.frozen).toBe(2);
+  });
+
+  it("とけかけの子に かけ直すと また 2 に もどる", () => {
+    const u = put(G.enemy, "front", 0, "wolf");
+    freezeUnit(u);
+    expect(thawUnit(u)).toBe(false);      // 1ターン すぎた
+    expect(u.frozen).toBe(1);             // あと1
+    freezeUnit(u);                        // ここで かけ直す
+    expect(u.frozen).toBe(2);             // このターンからの こおりに なる
+  });
+
+  it("2ターン すぎると とける", () => {
+    const u = put(G.enemy, "front", 0, "wolf");
+    freezeUnit(u);
+    expect(thawUnit(u)).toBe(false);      // 2 → 1
+    expect(thawUnit(u)).toBe(true);       // 1 → とけた
+    expect(u.frozen).toBeUndefined();
+    expect(canAttack(u)).toBe(true);
+  });
+
+  it("こおっている間は こうげきできない", () => {
+    const u = put(G.enemy, "front", 0, "wolf");
+    expect(canAttack(u)).toBe(true);
+    freezeUnit(u);
+    expect(canAttack(u)).toBe(false);
+    thawUnit(u);
+    expect(canAttack(u)).toBe(false);     // あと1 の あいだも まだ 動けない
+    thawUnit(u);
+    expect(canAttack(u)).toBe(true);
+  });
+
+  it("こおっていない子に とかしても 何も おきない", () => {
+    const u = put(G.enemy, "front", 0, "wolf");
+    expect(thawUnit(u)).toBe(false);
+    expect(u.frozen).toBeUndefined();
   });
 });
 
