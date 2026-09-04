@@ -318,7 +318,7 @@ function applyEffect(effect, targets, caster) {
         const again = !!t.frozen;
         freezeUnit(t);
         floatNum(t, again ? "こおりなおし！" : "こおった！", "freeze");
-        log(again ? `${t.name}の こおりが かけ直された！` : `${t.name}は こおりついた！`);
+        log(again ? `${t.name}は 再び こおりついた！` : `${t.name}は こおりついた！`);
       }
     }
     else if (effect.kind === "poison") {
