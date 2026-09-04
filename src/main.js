@@ -8,6 +8,7 @@
 import {
   CARDS, CARD_MAP, MAX_SLOTS, START_HP, MAX_MP, HAND_MAX, CLEANUP_DELAY,
 } from "./core/cards.js";
+import { ART } from "./core/art.js";
 import {
   G, setG, makeGame, nextUid, snapshot, restore,
   sideName, sideOf, opponentOf, isLeader, sortHand, sideDeck,
@@ -101,6 +102,14 @@ function setupSim() {
   if (!simNext()) return false;
   simReport(false);
   return true;
+}
+
+/**
+ * カードの 絵。art/ に おいてあれば 手描きの絵、無ければ 絵文字。
+ * alt は 空にする（すぐ となりに 名前が 出ているので 読みあげは いらない）
+ */
+function artOf(id, emoji) {
+  return ART[id] ? `<img src="${ART[id]}" alt="">` : emoji;
 }
 
 /** 新しい対戦を はじめる（状態づくりは core、演出は ここ） */
@@ -1349,7 +1358,7 @@ function buildUnit(unit, side, row, i, targets) {
 
   el.innerHTML =
     (marks ? `<div class="unit-marks">${marks}</div>` : "") +
-    `<div class="unit-emoji">${unit.emoji}</div>` +
+    `<div class="unit-emoji">${artOf(unit.id, unit.emoji)}</div>` +
     `<div class="unit-name${nameCls}">${unit.name}</div>` +
     `<div class="unit-stats">` +
       `<div class="orb atk">${unit.atk}</div>` +
@@ -1400,7 +1409,7 @@ function renderHand() {
 
     el.innerHTML =
       `<div class="${costCls}">${now}</div>` +
-      `<div class="card-art">${c.emoji}</div>` +
+      `<div class="card-art">${artOf(c.id, c.emoji)}</div>` +
       `<div class="card-name">${c.name}</div>` +
       `<div class="card-text${size}">${txt}</div>` + foot;
 
@@ -1506,7 +1515,7 @@ function showZoom(card, opts = {}) {
 
   el.innerHTML =
     `<div class="zoom-cost${cost < card.cost ? " cut" : ""}">${cost}</div>` +
-    `<div class="zoom-art">${card.emoji}</div>` +
+    `<div class="zoom-art">${artOf(card.id, card.emoji)}</div>` +
     `<div class="zoom-name">${card.name}</div>` +
     `<div class="zoom-text">${card.text || "　"}</div>` + gear + foot +
     `<div class="zoom-hint">どこかを タップすると とじる</div>`;

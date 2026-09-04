@@ -8,6 +8,7 @@
     "test": "vitest run",
     "watch": "vitest",
     "cards": "python apply-cards.py",
+    "art": "node scripts/make-art.js",
     "icons": "node scripts/make-icons.js",
     "preview": "vite preview --port 4173"
   },

@@ -384,7 +384,13 @@
     0%, 100% { opacity: 1; }
     50%      { opacity: .45; }
   }
-  .unit-emoji { font-size: 31px; line-height: 1; filter: drop-shadow(0 2px 3px rgba(0,0,0,.65)); }
+  .unit-emoji {
+    font-size: 31px; line-height: 1;
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,.65));
+    display: flex; align-items: center; justify-content: center;
+    height: 34px;
+  }
+  .unit-emoji img { max-height: 100%; max-width: 100%; object-fit: contain; }
   .unit-name {
     font-size: 10px; font-weight: 700; margin-top: 3px;
     text-align: center; line-height: 1.1; padding: 0 2px;
@@ -683,6 +689,7 @@
     text-shadow: 0 2px 3px #000;
     box-shadow: 0 3px 10px rgba(0,0,0,.7);
   }
+  .zoom-art img { max-height: 100%; max-width: 100%; object-fit: contain; }
   .zoom-art {
     flex: 0 0 auto; height: 38%;
     display: flex; align-items: center; justify-content: center;
@@ -757,9 +764,11 @@
     box-shadow: 0 0 10px rgba(111,224,160,.8), 0 2px 5px rgba(0,0,0,.6);
   }
   .card-art {
-    height: 38px; margin-top: 11px; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center; font-size: 31px;
+    /* ここが 絵の 場所。手で 描いた絵に さしかえても ここに おさまる */
+    height: 58px; margin-top: 5px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 46px;
   }
+  .card-art img { max-height: 100%; max-width: 100%; object-fit: contain; }
   .card-name {
     text-align: center; font-size: 11px; font-weight: 900;
     color: #16203c; line-height: 1.15; padding: 2px 0;
@@ -1066,7 +1075,7 @@
     .unit-emoji { font-size: 25px; }
     .unit-name { font-size: 9px; }
     .card { width: 90px; height: 164px; }
-    .card-art { font-size: 26px; height: 32px; margin-top: 10px; }
+    .card-art { font-size: 40px; height: 50px; margin-top: 4px; }
     .card-name { font-size: 10px; }
     .card-text { font-size: 9.5px; line-height: 1.35; }
     .card-text.long  { font-size: 8.8px; line-height: 1.3; }
@@ -1127,7 +1136,7 @@
     .hand-area::-webkit-scrollbar { height: 4px; }
     .hand-area::-webkit-scrollbar-thumb { background: rgba(242,193,78,.5); border-radius: 2px; }
     .card { scroll-snap-align: center; width: 86px; height: clamp(140px, 19.5dvh, 158px); }
-    .card-art { height: 30px; margin-top: 9px; font-size: 24px; }
+    .card-art { height: 46px; margin-top: 3px; font-size: 37px; }
     .card-name { font-size: 9.5px; margin: 2px 0 1px; }
     .card-cost { width: 31px; height: 31px; font-size: 17px; top: -9px; left: -9px; }
     .card .orb { width: 25px; height: 25px; font-size: 14px; }
