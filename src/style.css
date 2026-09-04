@@ -496,8 +496,12 @@
 
   /* ===== 山札が つきたとき の ダメージ札 ===== */
   .fatigue-card {
-    width: 74px; height: 104px;
-    flex-shrink: 0;
+    /* 手札の まんなかに かぶせる。手札は 動かさない */
+    position: fixed;
+    transform: translate(-50%, -50%);
+    z-index: 95;
+    pointer-events: none;
+    width: 84px; height: 118px;
     border-radius: 9px;
     background: linear-gradient(170deg, #6b1b2c 0%, #3d0d1a 55%, #1a0409 100%);
     border: 3px solid var(--crimson);
@@ -510,8 +514,8 @@
   }
   /* 引いてくる（下から せり上がる） */
   @keyframes fatigueIn {
-    from { opacity: 0; transform: translateY(34px) scale(.7) rotate(-8deg); }
-    to   { opacity: 1; transform: translateY(0) scale(1) rotate(0); }
+    from { opacity: 0; transform: translate(-50%, calc(-50% + 40px)) scale(.6) rotate(-10deg); }
+    to   { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0); }
   }
   .fatigue-art { font-size: 30px; line-height: 1; filter: drop-shadow(0 2px 3px #000); }
   .fatigue-dmg {
@@ -525,21 +529,21 @@
   /* くらった あと 燃えて 消える */
   .fatigue-card.burn { animation: fatigueBurn .5s ease-in forwards; }
   @keyframes fatigueBurn {
-    0%   { opacity: 1; transform: scale(1); filter: brightness(1); }
-    35%  { opacity: 1; transform: scale(1.16) rotate(3deg); filter: brightness(2.2) saturate(1.6); }
-    100% { opacity: 0; transform: scale(.5) translateY(-24px) rotate(12deg); filter: brightness(3); }
+    0%   { opacity: 1; transform: translate(-50%, -50%) scale(1); filter: brightness(1); }
+    35%  { opacity: 1; transform: translate(-50%, -50%) scale(1.18) rotate(4deg); filter: brightness(2.2) saturate(1.6); }
+    100% { opacity: 0; transform: translate(-50%, calc(-50% - 30px)) scale(.5) rotate(14deg); filter: brightness(3); }
   }
   /* あいて側は 手札が 小さいので それに あわせる */
   .fatigue-card.foe {
-    width: 30px; height: 42px;
-    border-width: 2px; border-radius: 5px;
-    gap: 0;
+    width: 52px; height: 74px;
+    border-width: 2px; border-radius: 6px;
+    gap: 2px;
   }
-  .fatigue-card.foe .fatigue-art { font-size: 14px; }
-  .fatigue-card.foe .fatigue-dmg { font-size: 16px; }
+  .fatigue-card.foe .fatigue-art { font-size: 20px; }
+  .fatigue-card.foe .fatigue-dmg { font-size: 21px; }
 
   @media (prefers-reduced-motion: reduce) {
-    .fatigue-card { animation: none; }
+    .fatigue-card { animation: none; transform: translate(-50%, -50%); }
     .fatigue-card.burn { animation: none; opacity: 0; }
   }
 

@@ -1987,15 +1987,19 @@ const FATIGUE_HOLD = 800;    // 見せておく 長さ
 const FATIGUE_BURN = 500;    // 消えるまで
 
 function showFatigueCard(side, damage) {
-  const hand = document.getElementById(side.isPlayer ? "player-hand" : "enemy-hand");
-  if (!hand) return;
+  // 手札の まんなかに かぶせて 出す。手札は 動かさない
+  const area = document.getElementById(side.isPlayer ? "player-hand" : "enemy-hand");
+  if (!area) return;
+  const box = area.getBoundingClientRect();
 
   const el = document.createElement("div");
   el.className = "fatigue-card" + (side.isPlayer ? "" : " foe");
+  el.style.left = `${box.left + box.width / 2}px`;
+  el.style.top  = `${box.top + box.height / 2}px`;
   el.innerHTML =
     `<div class="fatigue-art">💀</div>` +
     `<div class="fatigue-dmg">${damage}</div>`;
-  hand.appendChild(el);
+  document.getElementById("fx").appendChild(el);     // 手札の 上に かぶせる
 
   // くらってから 燃やす
   setTimeout(() => {
