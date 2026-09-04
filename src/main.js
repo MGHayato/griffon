@@ -1977,6 +1977,45 @@ function showDeckPicker(start = false) {
   document.getElementById("overlay").classList.add("show");
 }
 
+/** 何行を さかのぼって 見せるか */
+const LOG_SHOWN = 12;
+
+/** ログを タップしたとき。直近の やりとりを さかのぼって 見せる */
+function showLog() {
+  if (!G) return;
+  modalMode = "log";
+  const box = document.getElementById("modal-rules");
+  box.innerHTML = "";
+
+  const list = document.createElement("div");
+  list.className = "log-list";
+  const lines = G.logs.slice(0, LOG_SHOWN);
+  if (!lines.length) {
+    const d = document.createElement("div");
+    d.className = "log-empty";
+    d.textContent = "まだ 何も おきていないよ";
+    list.appendChild(d);
+  } else {
+    // 名前が 入るので textContent で 入れる（タグに ならない）
+    lines.forEach((m, i) => {
+      const d = document.createElement("div");
+      d.className = "log-line" + (i === 0 ? " newest" : "");
+      d.textContent = m;
+      list.appendChild(d);
+    });
+  }
+  box.appendChild(list);
+
+  document.getElementById("modal-title").textContent = "ログ";
+  document.getElementById("modal-sub").textContent = `${G.turnCount}ターン目`;
+  document.getElementById("modal-note").textContent =
+    G.logs.length > LOG_SHOWN
+      ? `新しい ほうから ${LOG_SHOWN}行。ここは スクロールできるよ。`
+      : "新しい ほうから ならんでいるよ。";
+  document.getElementById("modal-btn").textContent = "とじる";
+  document.getElementById("overlay").classList.add("show");
+}
+
 /** マニュアル。ルールを ぜんぶ出す。ゲーム中でも いつでも開ける */
 function showManual() {
   modalMode = "manual";
@@ -2015,16 +2054,21 @@ document.getElementById("modal-btn").onclick = () => {
     return;
   }
   document.getElementById("overlay").classList.remove("show");
-  // マニュアルを とじただけのときは 何も起こさない
-  if (modalMode === "manual") return;
+  // マニュアルや ログを とじただけのときは 何も起こさない
+  if (modalMode === "manual" || modalMode === "log") return;
   // タイトルや 決着のあとは、まず デッキを えらんでから たたかう
   if (!G || G.over) showDeckPicker(true);
 };
-// マニュアルは まわりの くらいところを タップしても とじられる
+// マニュアルと ログは まわりの くらいところを タップしても とじられる
 // （なまえや デッキは 保存が いるので ボタンから とじてもらう）
 document.getElementById("overlay").onclick = (ev) => {
   if (ev.target !== ev.currentTarget) return;    // 中身を おしたときは 何もしない
-  if (modalMode === "manual") closeModal();
+  if (modalMode === "manual" || modalMode === "log") closeModal();
+};
+// まんなかの ログを おすと、さかのぼって 見られる
+document.getElementById("log").onclick = (ev) => {
+  ev.stopPropagation();
+  showLog();
 };
 document.getElementById("player-leader").onclick = () => onLeaderClick(G.player);
 document.getElementById("enemy-leader").onclick  = () => onLeaderClick(G.enemy);

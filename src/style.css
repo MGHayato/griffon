@@ -490,6 +490,36 @@
   }
   #log div { line-height: 1.5; color: var(--dim); }
   #log div:first-child { color: var(--gold); }
+  /* おすと さかのぼって 見られる */
+  #log { cursor: pointer; transition: background .12s; }
+  #log:hover { background: rgba(242,193,78,.08); }
+
+  /* ===== ログを さかのぼる 画面 ===== */
+  .log-list {
+    display: flex; flex-direction: column;
+    gap: 1px;
+    max-height: 46dvh;
+    overflow-y: auto;
+    text-align: left;
+    padding-right: 2px;
+  }
+  .log-line {
+    font-size: 12.5px; line-height: 1.5;
+    color: var(--dim);
+    padding: 4px 8px;
+    border-left: 2px solid transparent;
+  }
+  .log-line:nth-child(odd) { background: rgba(4,8,26,.4); }
+  /* いちばん 新しい 1行 */
+  .log-line.newest {
+    color: var(--gold);
+    border-left-color: var(--gold);
+    background: rgba(242,193,78,.1);
+  }
+  .log-empty {
+    color: var(--dim); font-size: 12.5px;
+    text-align: center; padding: 18px 0;
+  }
 
   .btn {
     font-family: var(--font-dot);
