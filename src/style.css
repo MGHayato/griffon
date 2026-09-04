@@ -190,12 +190,21 @@
     background: rgba(233,237,255,.28);
   }
   .deck-dots .dot.on { background: var(--gold); box-shadow: 0 0 5px rgba(242,193,78,.8); }
-  /* リーダー自身に まもりが かかっている しるし */
-  .leader-portrait.warded::after {
-    content: "🛡️";
-    position: absolute; right: -4px; bottom: -4px;
-    font-size: 14px; line-height: 1;
+  /* リーダー自身に かかっている まもりと、あと何ターンか */
+  .leader-ward {
+    position: absolute; right: -6px; bottom: -5px;
+    display: flex; align-items: center; gap: 1px;
+    font-size: 13px; line-height: 1;
+    padding: 1px 3px; border-radius: 3px;
+    background: rgba(4,8,26,.9);
+    border: 1px solid var(--gold-dk);
     filter: drop-shadow(0 1px 2px rgba(0,0,0,.9));
+  }
+  .leader-ward b {
+    font-family: var(--font-dot);
+    font-size: 11px; font-weight: 400;
+    color: var(--gold);
+    font-variant-numeric: tabular-nums;
   }
   .deck-vs {
     font-family: var(--font-dot);
@@ -354,9 +363,20 @@
     pointer-events: none;
   }
   .mark {
+    display: flex; align-items: center; gap: 1px;
     font-size: 11px; line-height: 1;
     filter: drop-shadow(0 1px 2px rgba(0,0,0,.9));
   }
+  /* あと何ターンで きれるか */
+  .mark b {
+    font-family: var(--font-dot);
+    font-size: 10px; font-weight: 400;
+    color: #fff;
+    text-shadow: 0 1px 2px #000, 0 0 3px #000;
+    font-variant-numeric: tabular-nums;
+  }
+  .mark.ice  b { color: #bfe9ff; }
+  .mark.ward b { color: var(--gold); }
   .mark.poison { animation: poisonPulse 1.6s infinite; }
   @keyframes poisonPulse {
     0%, 100% { opacity: 1; }

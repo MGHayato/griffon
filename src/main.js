@@ -1186,8 +1186,17 @@ function renderLeaders() {
       if (cut) ward.textContent = `🛡 みかた -${cut}（あと${shieldSoonest(side.shield)}）`;
     }
     if (mute) mute.hidden = !side.noSpell;
-    // リーダー自身の まもりは 顔の ところに 小さく出す
-    document.getElementById(`${who}-leader`).classList.toggle("warded", shieldSum(side.ownShield) > 0);
+
+    // リーダー自身の まもりは 顔の すみに 「🛡2」のように 出す
+    const face = document.getElementById(`${who}-leader`);
+    const own = shieldSoonest(side.ownShield);
+    if (own) {
+      const tag = document.createElement("span");
+      tag.className = "leader-ward";
+      tag.title = `まもり：あと${own}`;
+      tag.innerHTML = `🛡️<b>${own}</b>`;
+      face.appendChild(tag);
+    }
   });
 }
 
@@ -1266,11 +1275,13 @@ function buildUnit(unit, side, row, i, targets) {
   const now = Math.max(0, unit.hp);
   const hpText = hurt ? `${now}<span class="max">/${unit.maxHp}</span>` : `${now}`;
 
-  // 状態異常の しるし（こおり・毒・まもり）
+  // 状態異常の しるし。あと何ターンで きれるかを 数字で そえる
+  // （毒は とけないので 数字は つけない）
+  const wardLeft = shieldSoonest(unit.shield);
   const marks =
-    (unit.frozen ? `<span class="mark ice" title="こおり">❄️</span>` : "") +
-    (unit.poison ? `<span class="mark poison" title="どく">🟣</span>` : "") +
-    (shieldSum(unit.shield) ? `<span class="mark ward" title="まもり">🛡️</span>` : "");
+    (unit.frozen ? `<span class="mark ice" title="こおり：あと${unit.frozen}">❄️<b>${unit.frozen}</b></span>` : "") +
+    (unit.poison ? `<span class="mark poison" title="どく：とけない">🟣</span>` : "") +
+    (wardLeft ? `<span class="mark ward" title="まもり：あと${wardLeft}">🛡️<b>${wardLeft}</b></span>` : "");
 
   el.innerHTML =
     (marks ? `<div class="unit-marks">${marks}</div>` : "") +
@@ -1644,9 +1655,9 @@ const MANUAL = [
   {
     title: "状態異常",
     rules: [
-      ["こおり", "❄️が ついた ユニットは <b>つぎの じぶんのターンまで こうげきできない</b>。1回 やすんだら とける。"],
+      ["こおり", "❄️が ついた ユニットは <b>つぎの じぶんのターンまで こうげきできない</b>。1回 やすんだら とける。しるしの <b>数字が のこりターン</b>。"],
       ["どく",   "🟣が ついた ユニットは <b>どちらのターンが 終わっても 1ダメージ</b>（1周で 2ダメージ）。<b>とけない</b>ので、ほうっておくと じわじわ 死ぬ。まもりでは 防げない。"],
-      ["まもり", "🛡️が ついている間は <b>うけるダメージが へる</b>。じぶんのターンが 来るたびに のこりが 1へる。味方全体の まもり（ヴェール系）は <b>かさねがけできない</b>ので、きれるまで 手札で えらべない。木の盾のような <b>1体だけの まもりとは 合わさる</b>。"],
+      ["まもり", "🛡️が ついている間は <b>うけるダメージが へる</b>。しるしの <b>数字が のこりターン</b>で、じぶんのターンが 来るたびに 1へる。味方全体の まもり（ヴェール系）は <b>かさねがけできない</b>ので、きれるまで 手札で えらべない。木の盾のような <b>1体だけの まもりとは 合わさる</b>。リーダーに かけたときは 顔の すみに 出る。"],
       ["とくぎ ふうじ", "🤫の 間は <b>とくぎカードが 出せない</b>。どうぐと ユニットは ふつうに 出せる。1ターンで とける。"],
     ],
   },
