@@ -227,6 +227,18 @@ def parse_effect(text, is_unit):
                      "turns": n(m.group(1)),
                      "target": "allyUnit" if m.group(2) else "allyAny"})
 
+    # --- そうび（ターンの きまりが 無い ＝ ずっと つく）---
+    # 武器は ひとつ、盾も ひとつ。おなじ場所に つけると 前のは 外れる
+    m = re.search(r"味方ユニット1体の攻撃力を?\+" + NUM, flat)
+    if m:
+        return done({"kind": "equip", "slot": "weapon",
+                     "value": n(m.group(1)), "target": "allyUnit"})
+
+    m = re.search(r"味方ユニット1体が受けるダメージ-" + NUM, flat)
+    if m:
+        return done({"kind": "equip", "slot": "armor",
+                     "value": n(m.group(1)), "target": "allyUnit"})
+
     # --- とくぎ封じ ---
     if re.search(r"次のターン敵は(?:とくぎ|特技)を使えない", flat):
         return done({"kind": "silence", "target": "self"})
@@ -506,7 +518,7 @@ def main():
         parts = [f'kind:"{e["kind"]}"']
         if "value" in e:   parts.append(f'value:{e["value"]}')
         parts.append(f'target:"{e["target"]}"')
-        for k in ("filter", "maxCost", "turns", "times", "when", "fx"):
+        for k in ("filter", "maxCost", "turns", "times", "slot", "when", "fx"):
             if k in e:
                 v = e[k]
                 parts.append(f'{k}:{v}' if isinstance(v, int) else f'{k}:"{v}"')

@@ -92,15 +92,33 @@ export function canAttack(unit) {
   return unit.hp > 0 && !unit.sick && !unit.attacked && !unit.frozen && unit.atk > 0;
 }
 
+/* -----------------------------------------------------------
+   そうび
+   ユニットは 武器を ひとつ、盾を ひとつ 持てる。
+   ターンでは きれない。おなじ場所に つけると 前のは 外れる。
+   ----------------------------------------------------------- */
+
+/** そのユニットの そうび（武器なら "weapon"、盾なら "armor"）*/
+export function equipOf(unit, slot) {
+  const id = unit && unit[slot];
+  return id ? CARD_MAP[id] : null;
+}
+
+/** 盾で へらせる ダメージの ぶん */
+export function armorCut(unit) {
+  const a = equipOf(unit, "armor");
+  return a ? a.effect.value : 0;
+}
+
 /**
  * そのユニット／リーダーが へらせる ダメージの ぶん。
- * ユニットは 自分にかかったぶん ＋ 味方全体のぶん。
+ * ユニットは 盾 ＋ 一時的な まもり ＋ 味方全体のぶん。
  * リーダーは 味方全体のぶん ＋ 自分にかけたぶん。
  */
 export function shieldOf(t) {
   if (isLeader(t)) return shieldSum(t.shield) + shieldSum(t.ownShield);
   const s = sideOf(t);
-  return shieldSum(t.shield) + (s ? shieldSum(s.shield) : 0);
+  return armorCut(t) + shieldSum(t.shield) + (s ? shieldSum(s.shield) : 0);
 }
 
 /**

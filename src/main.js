@@ -14,13 +14,14 @@ import {
   getPlayerName, setPlayerName, DEFAULT_NAMES, NAME_MAX,
   playableDecks, getDeck, getMyDeckId, getFoeDeckId,
   setMyDeckId, setFoeDeckId, RANDOM_DECK, deckChoices,
-  grantShield, tickShield, shieldSum, shieldSoonest,
+  grantShield, tickShield, shieldSum, shieldSoonest, equipTo,
 } from "./core/state.js";
 import {
   allUnits, hasFreeSlot, laneOccupied, leaderBlocked, isCovered,
   laneUnits, unitLocation, candidateLanes, candidateRows,
   legalAttackTargets, canAttack, canPlay, effectCandidates,
   costOf, frozenUnits, shieldOf, summonEffect, matchesFilter, healWatchers,
+  equipOf, armorCut,
 } from "./core/board.js";
 
 /* =========================================================
@@ -246,6 +247,8 @@ function summon(side, cardId, row, idx) {
     lifesteal: !!c.lifesteal,
     healOnAttack: c.healOnAttack || 0,
     damageOnHeal: c.damageOnHeal || 0,
+    weapon: null,                     // そうび（武器）ひとつ
+    armor:  null,                     // そうび（盾）ひとつ
   };
   side[row][idx] = unit;
   log(`${sideName(side)}は「${c.name}」を ${row === "front" ? "ぜんれつ" : "こうれつ"}に よびだした！`);
@@ -342,6 +345,7 @@ function applyEffect(effect, targets, caster) {
       t.atk += effect.value;
       floatNum(t, `攻+${effect.value}`, "buff");
     }
+    else if (effect.kind === "equip") equipItem(t, effect);
   });
   scheduleCleanup();
 }
@@ -419,6 +423,34 @@ function ageShield(holder, key = "shield") {
     log(`${holder.name || sideName(holder)}の まもりが きれた`
       + (left > 0 ? `（のこり -${left}）` : ""));
   }
+}
+
+/* ----- そうび ----- */
+
+/** その効果を もつ そうびカードを 引きあてる */
+function cardOfEquip(effect) {
+  return CARDS.find(c => c.effect === effect)
+      || CARDS.find(c => c.effect && c.effect.kind === "equip"
+                      && c.effect.slot === effect.slot
+                      && c.effect.value === effect.value)
+      || null;
+}
+
+/**
+ * そうびを つける。つけかえの 計算そのものは core の equipTo が やる。
+ * ここは ログと 演出だけ。
+ */
+function equipItem(unit, effect) {
+  if (!unit || isLeader(unit) || unit.hp <= 0) return;
+  const card = cardOfEquip(effect);
+  if (!card) return;
+
+  const old = equipTo(unit, card);
+  log(old
+    ? `「${unit.name}」の 「${old.name}」を はずして 「${card.name}」を そうびした！`
+    : `「${unit.name}」は 「${card.name}」を そうびした！`);
+  floatNum(unit,
+    effect.slot === "weapon" ? `攻+${effect.value}` : `まもり -${effect.value}`, "buff");
 }
 
 /** 使った どうぐを ランダムに ひろいなおす */
@@ -882,6 +914,8 @@ function aiIsWorthPlaying(E, c) {
   }
   if (e.kind === "buff")    return allUnits(E).length >= 2;        // 1体だけなら温存
   if (e.kind === "buffAtk") return allUnits(E).some(u => !u.sick); // すぐ殴れる子がいるとき
+  // そうびは 付ける先が いて、まだ おなじ場所が 空いている子が いるとき
+  if (e.kind === "equip") return allUnits(E).some(u => !u[e.slot]);
   if (e.kind === "draw")    return E.hand.length + e.value - 1 <= HAND_MAX;
   if (e.kind === "swap")    return aiChooseLane(e, E) !== null;
   if (e.kind === "search") {
@@ -1073,6 +1107,14 @@ function aiChooseEffectTarget(effect, E = G.enemy) {
     // かたくて 長生きしそうな 相手ほど 毒が きく
     const foes = allUnits(foe).filter(u => !u.poison);
     return foes.sort((a, b) => b.hp - a.hp)[0] || null;
+  }
+  if (effect.kind === "equip") {
+    // まだ その場所が 空いている子を えらぶ。空きが 無ければ 付けかえない
+    const free = allUnits(E).filter(u => !u[effect.slot]);
+    if (!free.length) return null;
+    return effect.slot === "weapon"
+      ? free.sort((a, b) => b.atk - a.atk)[0]        // 武器は よく 殴る子へ
+      : free.sort((a, b) => b.hp - a.hp)[0];         // 盾は かたい子へ
   }
   if (effect.kind === "shield") {
     // けずられてきたら 自分を、そうでなければ いちばん 前で 殴られそうな 子を まもる
@@ -1275,13 +1317,18 @@ function buildUnit(unit, side, row, i, targets) {
   const now = Math.max(0, unit.hp);
   const hpText = hurt ? `${now}<span class="max">/${unit.maxHp}</span>` : `${now}`;
 
-  // 状態異常の しるし。あと何ターンで きれるかを 数字で そえる
-  // （毒は とけないので 数字は つけない）
+  // 状態異常と そうびの しるし。
+  // あと何ターンで きれるかは 数字で そえる。
+  // 毒は とけないので 数字なし。そうびも ずっと つくので 数字なし。
   const wardLeft = shieldSoonest(unit.shield);
+  const weapon = equipOf(unit, "weapon");
+  const armor  = equipOf(unit, "armor");
   const marks =
     (unit.frozen ? `<span class="mark ice" title="こおり：あと${unit.frozen}">❄️<b>${unit.frozen}</b></span>` : "") +
     (unit.poison ? `<span class="mark poison" title="どく：とけない">🟣</span>` : "") +
-    (wardLeft ? `<span class="mark ward" title="まもり：あと${wardLeft}">🛡️<b>${wardLeft}</b></span>` : "");
+    (wardLeft ? `<span class="mark ward" title="まもり：あと${wardLeft}">🛡️<b>${wardLeft}</b></span>` : "") +
+    (weapon ? `<span class="mark gear" title="そうび：${weapon.name}">🗡️</span>` : "") +
+    (armor  ? `<span class="mark gear" title="そうび：${armor.name}">🛡️</span>` : "");
 
   el.innerHTML =
     (marks ? `<div class="unit-marks">${marks}</div>` : "") +
@@ -1299,7 +1346,10 @@ function buildUnit(unit, side, row, i, targets) {
   };
   bindZoom(el, () => ({
     card: CARD_MAP[unit.id],
-    opts: { foe: side === G.enemy, atk: unit.atk, hp: unit.hp, maxHp: unit.maxHp },
+    opts: {
+      foe: side === G.enemy, atk: unit.atk, hp: unit.hp, maxHp: unit.maxHp,
+      weapon: equipOf(unit, "weapon"), armor: equipOf(unit, "armor"),
+    },
   }));
   return el;
 }
@@ -1413,7 +1463,8 @@ let longPressed = false;      // 長おしで開いた直後の タップを 打
 
 /** 手札のカード / 盤上のユニット を 大きく表示する */
 function showZoom(card, opts = {}) {
-  const { foe = false, atk = card.atk, hp = card.hp, maxHp = card.hp, cost = card.cost } = opts;
+  const { foe = false, atk = card.atk, hp = card.hp, maxHp = card.hp, cost = card.cost,
+          weapon = null, armor = null } = opts;
   const el = document.getElementById("zoom-card");
   el.className = "zoom-card"
     + (card.type === "spell" ? " spell" : card.type === "item" ? " item" : "")
@@ -1428,11 +1479,19 @@ function showZoom(card, opts = {}) {
        </div>`
     : `<div class="zoom-foot"><div class="zoom-tag">${card.type === "item" ? "どうぐ" : "とくぎ"}</div></div>`;
 
+  // 何を そうびしているか。長おしで ここを 見る
+  const gear = (weapon || armor)
+    ? `<div class="zoom-gear">` +
+      (weapon ? `<span><i>🗡️</i>${weapon.name}<b>攻+${weapon.effect.value}</b></span>` : "") +
+      (armor  ? `<span><i>🛡️</i>${armor.name}<b>被-${armor.effect.value}</b></span>` : "") +
+      `</div>`
+    : "";
+
   el.innerHTML =
     `<div class="zoom-cost${cost < card.cost ? " cut" : ""}">${cost}</div>` +
     `<div class="zoom-art">${card.emoji}</div>` +
     `<div class="zoom-name">${card.name}</div>` +
-    `<div class="zoom-text">${card.text || "　"}</div>` + foot +
+    `<div class="zoom-text">${card.text || "　"}</div>` + gear + foot +
     `<div class="zoom-hint">どこかを タップすると とじる</div>`;
 
   document.getElementById("zoom").classList.add("show");
@@ -1659,6 +1718,16 @@ const MANUAL = [
       ["どく",   "🟣が ついた ユニットは <b>どちらのターンが 終わっても 1ダメージ</b>（1周で 2ダメージ）。<b>とけない</b>ので、ほうっておくと じわじわ 死ぬ。まもりでは 防げない。"],
       ["まもり", "🛡️が ついている間は <b>うけるダメージが へる</b>。しるしの <b>数字が のこりターン</b>で、じぶんのターンが 来るたびに 1へる。味方全体の まもり（ヴェール系）は <b>かさねがけできない</b>ので、きれるまで 手札で えらべない。木の盾のような <b>1体だけの まもりとは 合わさる</b>。リーダーに かけたときは 顔の すみに 出る。"],
       ["とくぎ ふうじ", "🤫の 間は <b>とくぎカードが 出せない</b>。どうぐと ユニットは ふつうに 出せる。1ターンで とける。"],
+    ],
+  },
+  {
+    title: "そうび",
+    rules: [
+      ["そうび", "どうぐの なかには <b>ずっと つけっぱなしに なる</b>ものが ある。ターンでは きれない。"],
+      ["武器 🗡️", "つけた ユニットの <b>攻撃力が 上がる</b>。短剣なら +2。"],
+      ["盾 🛡️",   "つけた ユニットの <b>うけるダメージが へる</b>。木の盾なら -1。"],
+      ["ひとつずつ", "1体が つけられるのは <b>武器ひとつ と 盾ひとつ</b>。おなじ場所に つけると <b>前のは 外れて 上書き</b>される。"],
+      ["中身を 見る", "ユニットを <b>長おし</b>すると、何を つけているか わかる。"],
     ],
   },
   {

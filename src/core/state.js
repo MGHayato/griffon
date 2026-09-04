@@ -3,7 +3,7 @@
    G ひとつに ぜんぶ入っている。JSONにできる形を たもつこと
    （相手に そのまま送れることが 対人戦の 前提になる）
    ========================================================= */
-import { DECKS, START_HP } from "./cards.js";
+import { DECKS, START_HP, CARD_MAP } from "./cards.js";
 
 /** 対戦の状態。ESMの live binding なので、import 先でも最新が見える */
 export let G = null;
@@ -234,7 +234,26 @@ function savePlayerName(name) {
 /** その がわの デッキ（顔や 名前を 引くのに つかう） */
 export function sideDeck(side) { return getDeck(side && side.deckId); }
 
-/** 名前。じぶんは よびな、あいては デッキの 名前 */
+/* -----------------------------------------------------------
+   そうび
+   武器ひとつ、盾ひとつ。おなじ場所に つけると 前のは 外れる。
+   ターンでは きれない（ずっと つく）。
+   ----------------------------------------------------------- */
+
+/**
+ * そうびを つける。外れた そうび（無ければ null）を 返す。
+ * 武器は 攻撃力に 直に 足しているので、
+ * つけかえるときは 前のぶんを もどしてから 足しなおす。
+ */
+export function equipTo(unit, card) {
+  const slot = card.effect.slot;
+  const old = unit[slot] ? CARD_MAP[unit[slot]] : null;
+  if (old && slot === "weapon") unit.atk -= old.effect.value;
+  unit[slot] = card.id;
+  if (slot === "weapon") unit.atk += card.effect.value;
+  return old;
+}
+
 /* -----------------------------------------------------------
    まもり（うけるダメージを へらす）
    ひとつの 入れものに ためていくので、かさねがけすると たし算に なる。
@@ -272,6 +291,7 @@ export function tickShield(holder, key = "shield") {
   return list.length - left.length;
 }
 
+/** 名前。じぶんは よびな、あいては デッキの 名前 */
 export function sideName(side) {
   if (side.isPlayer) return getPlayerName();
   const d = sideDeck(side);

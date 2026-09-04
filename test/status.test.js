@@ -8,10 +8,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
   setG, makeGame, G, setFoeDeckId,
-  grantShield, tickShield, shieldSum, shieldSoonest,
+  grantShield, tickShield, shieldSum, shieldSoonest, equipTo,
 } from "../src/core/state.js";
 import { CARD_MAP, CARDS } from "../src/core/cards.js";
-import { canPlay, costOf, frozenUnits, effectCandidates, shieldOf, summonEffect, matchesFilter, healWatchers } from "../src/core/board.js";
+import { canPlay, costOf, frozenUnits, effectCandidates, shieldOf, summonEffect, matchesFilter, healWatchers, equipOf, armorCut } from "../src/core/board.js";
 
 beforeEach(() => {
   setFoeDeckId("alice");
@@ -241,6 +241,114 @@ describe("召喚時と 死亡時の 見わけ", () => {
   });
 });
 
+describe("そうび", () => {
+  it("短剣は 武器、木の盾は 盾", () => {
+    expect(CARD_MAP["dagger"].effect).toEqual({ kind: "equip", value: 2, target: "allyUnit", slot: "weapon" });
+    expect(CARD_MAP["woodshield"].effect).toEqual({ kind: "equip", value: 1, target: "allyUnit", slot: "armor" });
+  });
+
+  it("そうびに のこりターンは 無い（ずっと つく）", () => {
+    for (const c of CARDS.filter(c => c.effect && c.effect.kind === "equip")) {
+      expect(c.effect.turns, `${c.name}`).toBeUndefined();
+    }
+  });
+
+  it("盾を つけた ぶん ダメージが へる", () => {
+    const u = put(G.player, "front", 0, "golem");
+    expect(shieldOf(u)).toBe(0);
+    u.armor = "woodshield";
+    expect(armorCut(u)).toBe(1);
+    expect(shieldOf(u)).toBe(1);
+  });
+
+  it("盾と 味方全体の まもりは 合わさる", () => {
+    const u = put(G.player, "front", 0, "golem", { armor: "woodshield" });
+    grantShield(G.player, { value: 2, turns: 3 });        // ルミナスヴェール
+    expect(shieldOf(u)).toBe(3);                          // 1 + 2
+  });
+
+  it("そうびを 読みだせる", () => {
+    const u = put(G.player, "front", 0, "golem", { weapon: "dagger", armor: "woodshield" });
+    expect(equipOf(u, "weapon").name).toBe("短剣");
+    expect(equipOf(u, "armor").name).toBe("木の盾");
+    expect(equipOf(u, "weapon").effect.value).toBe(2);
+  });
+
+  it("何も つけていなければ null", () => {
+    const u = put(G.player, "front", 0, "slime");
+    expect(equipOf(u, "weapon")).toBeNull();
+    expect(equipOf(u, "armor")).toBeNull();
+    expect(armorCut(u)).toBe(0);
+  });
+
+  it("リーダーは そうびの ぶんを 数えない", () => {
+    expect(armorCut(G.player)).toBe(0);
+    expect(shieldOf(G.player)).toBe(0);
+  });
+
+  describe("つけかえ（上書き）", () => {
+    it("武器を つけると 攻撃力が 上がる", () => {
+      const u = put(G.player, "front", 0, "wolf");        // 攻3
+      expect(u.atk).toBe(3);
+      expect(equipTo(u, CARD_MAP["dagger"])).toBeNull();  // 前のは 無い
+      expect(u.atk).toBe(5);                              // 3 + 2
+      expect(u.weapon).toBe("dagger");
+    });
+
+    it("おなじ武器を つけなおしても 二重には ならない", () => {
+      const u = put(G.player, "front", 0, "wolf");
+      equipTo(u, CARD_MAP["dagger"]);
+      expect(u.atk).toBe(5);
+      const old = equipTo(u, CARD_MAP["dagger"]);         // 2枚目
+      expect(old.name).toBe("短剣");                       // 前のが 外れた
+      expect(u.atk).toBe(5);                              // 5のまま（+2 が 1回ぶん）
+    });
+
+    it("べつの武器に つけかえると 前のぶんが 外れる", () => {
+      const u = put(G.player, "front", 0, "wolf");
+      equipTo(u, CARD_MAP["dagger"]);                     // +2 → 攻5
+      // +5 の 武器が あったとして つけかえる
+      const bigSword = { id: "test-sword", name: "ためし剣",
+                         effect: { kind: "equip", slot: "weapon", value: 5, target: "allyUnit" } };
+      CARD_MAP["test-sword"] = bigSword;
+      const old = equipTo(u, bigSword);
+      expect(old.id).toBe("dagger");
+      expect(u.atk).toBe(8);                              // 3 + 5（短剣の +2 は 外れた）
+      delete CARD_MAP["test-sword"];
+    });
+
+    it("盾を つけかえても 攻撃力は 動かない", () => {
+      const u = put(G.player, "front", 0, "wolf");
+      equipTo(u, CARD_MAP["woodshield"]);
+      expect(u.atk).toBe(3);
+      expect(armorCut(u)).toBe(1);
+      const old = equipTo(u, CARD_MAP["woodshield"]);
+      expect(old.name).toBe("木の盾");
+      expect(u.atk).toBe(3);
+      expect(armorCut(u)).toBe(1);                        // かさならない
+    });
+
+    it("武器と 盾は べつの場所（両方 つけられる）", () => {
+      const u = put(G.player, "front", 0, "wolf");
+      equipTo(u, CARD_MAP["dagger"]);
+      equipTo(u, CARD_MAP["woodshield"]);
+      expect(u.weapon).toBe("dagger");
+      expect(u.armor).toBe("woodshield");
+      expect(u.atk).toBe(5);
+      expect(shieldOf(u)).toBe(1);
+    });
+
+    it("ゆうきの歌で 上がった ぶんは そのまま のこる", () => {
+      const u = put(G.player, "front", 0, "wolf");
+      u.atk += 1;                                          // +1/+1 の ぶん
+      equipTo(u, CARD_MAP["dagger"]);
+      expect(u.atk).toBe(6);                               // 3 + 1 + 2
+      equipTo(u, CARD_MAP["dagger"]);                      // つけかえ
+      expect(u.atk).toBe(6);                               // 歌の ぶんは 減らない
+    });
+  });
+});
+
 describe("まもり", () => {
   const veil = { value: 1, turns: 3 };
   const lumi = { value: 2, turns: 3 };
@@ -342,8 +450,9 @@ describe("「味方」と「味方ユニット」の 書きわけ", () => {
     }
   });
 
-  it("木の盾は「味方1体」なので リーダーにも かけられる", () => {
-    expect(targetOf("木の盾")).toBe("allyAny");
+  it("そうびは 盤面の子 だけ（リーダーには つけられない）", () => {
+    expect(targetOf("木の盾")).toBe("allyUnit");
+    expect(targetOf("短剣")).toBe("allyUnit");
   });
 
   it("ヴェールは 味方全体の まもり", () => {
