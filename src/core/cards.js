@@ -5,13 +5,15 @@
    ========================================================= */
 
 export const CARDS = [
-  // --- とくぎ（19種）---
+  // --- とくぎ（18種）---
   { id:"flare", name:"フレア", cost:1, type:"spell", emoji:"🔥", text:"敵1体に2ダメージ",
     effect:{ kind:"damage", value:2, target:"enemyAny", fx:"flare" } },
-  { id:"freeze", name:"フリーズ", cost:1, type:"spell", emoji:"❄️", text:"敵1体に1ダメージ、対象を凍結させる",
-    effect:{ kind:"freeze", value:1, target:"enemyUnit" } },
+  { id:"freeze", name:"フリーズ", cost:1, type:"spell", emoji:"❄️", text:"敵1体を凍結させる",
+    effect:{ kind:"freeze", value:0, target:"enemyUnit", times:1 } },
   { id:"slash", name:"スラッシュ", cost:2, type:"spell", emoji:"⚔️", text:"横1列に1ダメージ",
     effect:{ kind:"damage", value:1, target:"enemyRow" } },
+  { id:"hail", name:"ヘイル", cost:2, type:"spell", emoji:"🌨️", text:"横1列の敵を凍結させる",
+    effect:{ kind:"freeze", value:0, target:"enemyRow" } },
   { id:"heal", name:"ヒール", cost:2, type:"spell", emoji:"✨", text:"味方1体を3回復",
     effect:{ kind:"heal", value:3, target:"allyAny" } },
   { id:"salvage", name:"サルベージ", cost:2, type:"spell", emoji:"♻️", text:"使った道具をランダムに1枚手札に加える",
@@ -22,23 +24,19 @@ export const CARDS = [
     effect:{ kind:"heal", value:2, target:"allyUnitAll" } },
   { id:"shutup", name:"シャラプー", cost:2, type:"spell", emoji:"🤫", text:"次のターン、敵は特技を使えない",
     effect:{ kind:"silence", target:"self" } },
-  { id:"hail", name:"ヘイル", cost:3, type:"spell", emoji:"🌨️", text:"横1列に1ダメージ、対象を凍結させる",
-    effect:{ kind:"freeze", value:1, target:"enemyRow" } },
+  { id:"frostbite", name:"フロストバイト", cost:2, type:"spell", emoji:"🧊", text:"凍結状態の敵全員に2ダメージ",
+    effect:{ kind:"damage", value:2, target:"enemyFrozen" } },
   { id:"thunder", name:"サンダー", cost:3, type:"spell", emoji:"⚡", text:"縦1列に2ダメージ",
     effect:{ kind:"damage", value:2, target:"enemyLane", fx:"bolt" } },
-  { id:"frostbite", name:"フロストバイト", cost:3, type:"spell", emoji:"🧊", text:"凍結状態の敵全員に2ダメージ",
-    effect:{ kind:"damage", value:2, target:"enemyFrozen" } },
   { id:"highheal", name:"ハイヒール", cost:3, type:"spell", emoji:"💚", text:"味方1体を4回復",
     effect:{ kind:"heal", value:4, target:"allyAny" } },
   { id:"veil", name:"ヴェール", cost:3, type:"spell", emoji:"🛡️", text:"3ターンの間、味方全体が受けるダメージ-1",
     effect:{ kind:"shield", value:1, target:"allySelf", turns:3 } },
   { id:"storm", name:"ストーム", cost:4, type:"spell", emoji:"🌪️", text:"敵ユニット全体に2ダメージ",
     effect:{ kind:"damage", value:2, target:"enemyAll", fx:"storm" } },
-  { id:"megafreeze", name:"メガフリーズ", cost:4, type:"spell", emoji:"🌬️", text:"敵1体に3ダメージ、対象を凍結させる",
-    effect:{ kind:"freeze", value:3, target:"enemyUnit" } },
-  { id:"blizzard", name:"ブリザード", cost:5, type:"spell", emoji:"🌨️", text:"敵ユニット全体に2ダメージ、対象を凍結させる",
-    effect:{ kind:"freeze", value:2, target:"enemyAll" } },
-  { id:"megafrost", name:"メガフロスト", cost:5, type:"spell", emoji:"💠", text:"凍結状態の敵全員に3ダメージ",
+  { id:"blizzard", name:"ブリザード", cost:4, type:"spell", emoji:"🌨️", text:"敵ユニット全体を凍結させる",
+    effect:{ kind:"freeze", value:0, target:"enemyAll" } },
+  { id:"megafrost", name:"メガフロスト", cost:4, type:"spell", emoji:"💠", text:"凍結状態の敵全員に3ダメージ",
     effect:{ kind:"damage", value:3, target:"enemyFrozen" } },
   { id:"megaheal", name:"メガヒール", cost:5, type:"spell", emoji:"💖", text:"味方1体を6回復",
     effect:{ kind:"heal", value:6, target:"allyAny" } },
@@ -121,7 +119,7 @@ export const DECKS = [
   { id:"gretel", label:"グレーテル", emoji:"🍬", desc:"回復手段が多い持久型", total:30,
     cards:[["heal",2], ["idolsong",1], ["highheal",1], ["veil",2], ["megaheal",1], ["lumiveil",2], ["map",1], ["crumb",2], ["herb",2], ["candybomb",2], ["slime",2], ["rabbit",2], ["thiefgoblin",2], ["healslime",2], ["rocketrabbit",2], ["priestelf",2], ["healdemon",2]] },
   { id:"snow", label:"スノウ", emoji:"🍎", desc:"氷系の呪文で敵を凍らせて戦う", total:30,
-    cards:[["freeze",2], ["hail",1], ["frostbite",2], ["megafreeze",2], ["blizzard",1], ["megafrost",2], ["map",2], ["apple",2], ["poisonapple",2], ["slime",2], ["wingoblin",2], ["ghost",2], ["snowslime",2], ["yeti",2], ["yukionna",2], ["windragon",2]] },
+    cards:[["freeze",2], ["hail",2], ["frostbite",2], ["blizzard",2], ["megafrost",2], ["map",2], ["apple",2], ["poisonapple",2], ["slime",2], ["wingoblin",2], ["ghost",2], ["snowslime",2], ["yeti",2], ["yukionna",2], ["windragon",2]] },
 ];
 
 export const CARD_MAP = {};

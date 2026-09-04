@@ -945,6 +945,21 @@ function aiIsWorthPlaying(E, c) {
   return true;
 }
 
+/**
+ * その ひとかたまりを ねらう ねうち。
+ * ダメージなら「けずれる ぶん ＋ たおせるなら おまけ」。
+ * こおらせるだけの とくぎ（ヘイル・ブリザード）は ダメージが 0 なので、
+ * 「まだ こおっていない、殴ってきそうな 子が 何体 いるか」で はかる。
+ */
+function laneScore(units, effect) {
+  if (effect.kind === "freeze" && !effect.value) {
+    // 止められる 頭数 ＋ その子の かたさ（たおしにくい子ほど 止める ねうちが 高い）
+    return units.filter(u => !u.frozen && u.atk > 0).reduce((s, u) => s + 1 + u.hp, 0);
+  }
+  return units.reduce((s, u) =>
+    s + Math.min(u.hp, effect.value) + (u.hp <= effect.value ? 3 + u.atk : 0), 0);
+}
+
 /** たて一列の効果で どのレーンを ねらうか */
 function aiChooseLane(effect, E = G.enemy) {
   const P = opponentOf(E);
@@ -957,9 +972,7 @@ function aiChooseLane(effect, E = G.enemy) {
     if (!good.length) return null;
     return good.sort((a, b) => P.back[a].hp - P.back[b].hp)[0];
   }
-  // ダメージ：一番おいしいレーン
-  const score = (i) => laneUnits(P, i).reduce((s, u) =>
-    s + Math.min(u.hp, effect.value) + (u.hp <= effect.value ? 3 + u.atk : 0), 0);
+  const score = (i) => laneScore(laneUnits(P, i), effect);
   return lanes.slice().sort((a, b) => score(b) - score(a))[0];
 }
 
@@ -968,8 +981,7 @@ function aiChooseRow(effect, E = G.enemy) {
   const P = opponentOf(E);
   const rows = candidateRows(E);
   if (!rows.length) return null;
-  const score = (row) => P[row].filter(u => u && u.hp > 0).reduce((s, u) =>
-    s + Math.min(u.hp, effect.value) + (u.hp <= effect.value ? 3 + u.atk : 0), 0);
+  const score = (row) => laneScore(P[row].filter(u => u && u.hp > 0), effect);
   return rows.slice().sort((a, b) => score(b) - score(a))[0];
 }
 
@@ -1100,9 +1112,12 @@ function aiChooseEffectTarget(effect, E = G.enemy) {
     return (ready.length ? ready : allUnits(E)).sort((a, b) => b.atk - a.atk)[0] || null;
   }
   if (effect.kind === "freeze") {
-    // まだ こおっていない、いちばん 強い子から 止める
+    // かたい子から 止める。やわらかい子は 殴れば たおせるので、
+    // こおらせる ねうちは HPの のこりが 多い子ほど 高い。
+    // 同じ HPなら よく 殴ってくる子を えらぶ。
     const foes = allUnits(foe).filter(u => !u.frozen && u.atk > 0);
-    return foes.sort((a, b) => b.atk - a.atk)[0] || allUnits(foe)[0] || null;
+    return foes.sort((a, b) => (b.hp - a.hp) || (b.atk - a.atk))[0]
+        || allUnits(foe)[0] || null;
   }
   if (effect.kind === "poison") {
     // かたくて 長生きしそうな 相手ほど 毒が きく

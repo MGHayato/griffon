@@ -201,7 +201,17 @@ def parse_effect(text, is_unit):
     if m:
         return done({"kind": "freeze", "value": n(m.group(1)), "target": "enemyUnit"})
 
-    # ダメージ なしで こおらせるだけ。「敵2体を」なら 2回 えらぶ
+    # --- ダメージ なしで こおらせるだけ ---
+    if re.search(r"敵(?:ユニット)?全体を凍結させる", flat):
+        return done({"kind": "freeze", "value": 0, "target": "enemyAll"})
+
+    if re.search(r"(?:よこ|横)(?:一|1|１)列の敵を凍結させる", flat):
+        return done({"kind": "freeze", "value": 0, "target": "enemyRow"})
+
+    if re.search(r"(?:たて|縦)(?:一|1|１)列の敵を凍結させる", flat):
+        return done({"kind": "freeze", "value": 0, "target": "enemyLane"})
+
+    # 「敵2体を」なら 2回 えらぶ
     m = re.search(r"敵(?:ユニット)?" + NUM + r"体を凍結させる", flat)
     if m:
         return done({"kind": "freeze", "value": 0, "target": "enemyUnit", "times": n(m.group(1))})
