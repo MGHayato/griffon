@@ -67,14 +67,14 @@ describe("カードの データ", () => {
 
 describe("コスト", () => {
   it("ふだんは 書いてあるとおり", () => {
-    expect(costOf(G.player, "windragon")).toBe(CARD_MAP["windragon"].cost);
+    expect(costOf(G.player, "winterdragon")).toBe(CARD_MAP["winterdragon"].cost);
   });
 
   it("こおっている敵の数だけ 安くなる", () => {
     put(G.enemy, "front", 0, "slime", { frozen: 2 });
     put(G.enemy, "front", 1, "slime", { frozen: 2 });
     expect(frozenUnits(G.player).length).toBe(2);
-    expect(costOf(G.player, "windragon")).toBe(CARD_MAP["windragon"].cost - 2);
+    expect(costOf(G.player, "winterdragon")).toBe(CARD_MAP["winterdragon"].cost - 2);
     expect(costOf(G.player, "snowslime")).toBe(CARD_MAP["snowslime"].cost - 2);
   });
 
@@ -101,7 +101,7 @@ describe("出せるか の 判定", () => {
     put(G.enemy, "front", 0, "slime");
     G.player.noSpell = true;
     expect(canPlay(G.player, "flare")).toBe(false);      // とくぎ
-    expect(canPlay(G.player, "water")).toBe(true);       // どうぐ
+    expect(canPlay(G.player, "holywater")).toBe(true);       // どうぐ
     expect(canPlay(G.player, "slime")).toBe(true);       // ユニット
   });
 
@@ -114,16 +114,16 @@ describe("出せるか の 判定", () => {
 
   it("使った どうぐが 無いと サルベージは 出せない", () => {
     expect(canPlay(G.player, "salvage")).toBe(false);
-    G.player.usedItems.push("water");
+    G.player.usedItems.push("holywater");
     expect(canPlay(G.player, "salvage")).toBe(true);
   });
 
   it("安くなれば MPが 足りなくても 出せる", () => {
     G.player.mp = 5;
-    expect(canPlay(G.player, "windragon")).toBe(false);   // コスト7
+    expect(canPlay(G.player, "winterdragon")).toBe(false);   // コスト7
     put(G.enemy, "front", 0, "slime", { frozen: 2 });
     put(G.enemy, "front", 1, "slime", { frozen: 2 });
-    expect(canPlay(G.player, "windragon")).toBe(true);    // 7-2=5
+    expect(canPlay(G.player, "winterdragon")).toBe(true);    // 7-2=5
   });
 });
 
@@ -184,7 +184,7 @@ describe("デッキから さがす（サーチ）", () => {
   it("とくぎを さがすと とくぎだけ（どうぐは 入らない）", () => {
     const e = only("spell");
     expect(matchesFilter(CARD_MAP["flare"], e)).toBe(true);    // とくぎ
-    expect(matchesFilter(CARD_MAP["water"], e)).toBe(false);   // どうぐ
+    expect(matchesFilter(CARD_MAP["holywater"], e)).toBe(false);   // どうぐ
     expect(matchesFilter(CARD_MAP["slime"], e)).toBe(false);   // ユニット
   });
 
@@ -198,14 +198,14 @@ describe("デッキから さがす（サーチ）", () => {
   it("filter が 無ければ 何でも 通る", () => {
     const e = { kind: "search", value: 1, target: "self" };
     expect(matchesFilter(CARD_MAP["slime"], e)).toBe(true);
-    expect(matchesFilter(CARD_MAP["water"], e)).toBe(true);
+    expect(matchesFilter(CARD_MAP["holywater"], e)).toBe(true);
     expect(matchesFilter(CARD_MAP["flare"], e)).toBe(true);
   });
 
   it("ぬすっとゴブリンは どうぐを さがす", () => {
     const e = CARD_MAP["thiefgoblin"].effect;
     expect(e.filter).toBe("item");
-    expect(matchesFilter(CARD_MAP["water"], e)).toBe(true);
+    expect(matchesFilter(CARD_MAP["holywater"], e)).toBe(true);
     expect(matchesFilter(CARD_MAP["slime"], e)).toBe(false);
   });
 
@@ -213,7 +213,7 @@ describe("デッキから さがす（サーチ）", () => {
     const e = CARD_MAP["crumb"].effect;
     expect(matchesFilter(CARD_MAP["rabbit"], e)).toBe(true);    // ユニット1
     expect(matchesFilter(CARD_MAP["wolf"], e)).toBe(false);     // ユニット2
-    expect(matchesFilter(CARD_MAP["water"], e)).toBe(false);    // どうぐ0
+    expect(matchesFilter(CARD_MAP["holywater"], e)).toBe(false);    // どうぐ0
   });
 });
 

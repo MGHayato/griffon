@@ -56,7 +56,7 @@ npm run art
 | `slime.png` | スライム | 🟦 |
 | `rabbit.png` | ダッシュうさぎ | 🐇 |
 | `goblin.png` | ゴブリン | 👺 |
-| `wingoblin.png` | 真冬のゴブリン | 🧊 |
+| `wintergoblin.png` | 真冬のゴブリン | 🧊 |
 | `thiefgoblin.png` | ぬすっとゴブリン | 🎒 |
 | `wolf.png` | あばれウルフ | 🐺 |
 | `ghost.png` | ゴースト | 👻 |
@@ -71,7 +71,7 @@ npm run art
 | `priestelf.png` | プリーストエルフ | 🙏 |
 | `dragon.png` | ドラゴン | 🐉 |
 | `healdemon.png` | ヒールデーモン | 😈 |
-| `windragon.png` | ウィンタードラゴン | 🐲 |
+| `winterdragon.png` | ウィンタードラゴン | 🐲 |
 
 ### とくぎ（18種）
 
@@ -80,7 +80,7 @@ npm run art
 | `flare.png` | フレア | 🔥 |
 | `freeze.png` | フリーズ | ❄️ |
 | `slash.png` | スラッシュ | ⚔️ |
-| `hail.png` | ヘイル | 🌨️ |
+| `icerain.png` | ヘイル | 🌨️ |
 | `heal.png` | ヒール | ✨ |
 | `salvage.png` | サルベージ | ♻️ |
 | `song.png` | ゆうきの歌 | 🎵 |
@@ -100,7 +100,7 @@ npm run art
 
 | ファイル名 | カード | いまの絵 |
 |---|---|---|
-| `water.png` | 聖水 | 💧 |
+| `holywater.png` | 聖水 | 💧 |
 | `glove.png` | 革手袋 | 🧤 |
 | `map.png` | 地図 | 🗺️ |
 | `crumb.png` | パンくず | 🍞 |

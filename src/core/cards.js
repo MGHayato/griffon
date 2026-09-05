@@ -12,7 +12,7 @@ export const CARDS = [
     effect:{ kind:"freeze", value:0, target:"enemyUnit", times:1 } },
   { id:"slash", name:"スラッシュ", cost:2, type:"spell", emoji:"⚔️", text:"横1列に1ダメージ",
     effect:{ kind:"damage", value:1, target:"enemyRow" } },
-  { id:"hail", name:"ヘイル", cost:2, type:"spell", emoji:"🌨️", text:"横1列の敵を凍結させる",
+  { id:"icerain", name:"ヘイル", cost:2, type:"spell", emoji:"🌨️", text:"横1列の敵を凍結させる",
     effect:{ kind:"freeze", value:0, target:"enemyRow" } },
   { id:"heal", name:"ヒール", cost:2, type:"spell", emoji:"✨", text:"味方1体を3回復",
     effect:{ kind:"heal", value:3, target:"allyAny" } },
@@ -44,7 +44,7 @@ export const CARDS = [
     effect:{ kind:"shield", value:2, target:"allySelf", turns:3 } },
 
   // --- どうぐ（13種）---
-  { id:"water", name:"聖水", cost:0, type:"item", emoji:"💧", text:"MPを1回復",
+  { id:"holywater", name:"聖水", cost:0, type:"item", emoji:"💧", text:"MPを1回復",
     effect:{ kind:"mp", value:1, target:"self", fx:"blueGlow" } },
   { id:"glove", name:"革手袋", cost:0, type:"item", emoji:"🧤", text:"このターン中、どうぐのコスト-1",
     effect:{ kind:"discount", value:1, target:"self" } },
@@ -77,7 +77,7 @@ export const CARDS = [
     rush:true },
   { id:"goblin", name:"ゴブリン", cost:1, type:"unit", atk:1, hp:1, emoji:"👺", text:"召喚時：デッキからユニットを1枚手札に加える",
     effect:{ kind:"search", value:1, target:"self", filter:"unit" } },
-  { id:"wingoblin", name:"真冬のゴブリン", cost:1, type:"unit", atk:1, hp:1, emoji:"🧊", text:"召喚時：敵1体を凍結させる",
+  { id:"wintergoblin", name:"真冬のゴブリン", cost:1, type:"unit", atk:1, hp:1, emoji:"🧊", text:"召喚時：敵1体を凍結させる",
     effect:{ kind:"freeze", value:0, target:"enemyUnit", times:1 } },
   { id:"thiefgoblin", name:"ぬすっとゴブリン", cost:1, type:"unit", atk:1, hp:1, emoji:"🎒", text:"召喚時：デッキからどうぐを1枚手札に加える",
     effect:{ kind:"search", value:1, target:"self", filter:"item" } },
@@ -105,7 +105,7 @@ export const CARDS = [
     effect:{ kind:"damage", value:2, target:"enemyLane" } },
   { id:"healdemon", name:"ヒールデーモン", cost:6, type:"unit", atk:3, hp:5, emoji:"😈", text:"味方が回復するたびランダムな敵1体に2ダメージ",
     damageOnHeal:2 },
-  { id:"windragon", name:"ウィンタードラゴン", cost:7, type:"unit", atk:4, hp:6, emoji:"🐲", text:"凍結している敵の数だけコスト-1、召喚時：縦一列に2ダメージ",
+  { id:"winterdragon", name:"ウィンタードラゴン", cost:7, type:"unit", atk:4, hp:6, emoji:"🐲", text:"凍結している敵の数だけコスト-1、召喚時：縦一列に2ダメージ",
     effect:{ kind:"damage", value:2, target:"enemyLane" },
     frostCost:1 },
 ];
@@ -119,7 +119,7 @@ export const DECKS = [
   { id:"gretel", label:"グレーテル", emoji:"🍬", desc:"回復手段が多い持久型", total:30,
     cards:[["heal",2], ["idolsong",1], ["highheal",1], ["veil",2], ["megaheal",1], ["lumiveil",2], ["map",1], ["crumb",2], ["herb",2], ["candybomb",2], ["slime",2], ["rabbit",2], ["thiefgoblin",2], ["healslime",2], ["rocketrabbit",2], ["priestelf",2], ["healdemon",2]] },
   { id:"snow", label:"スノウ", emoji:"🍎", desc:"氷系の呪文で敵を凍らせて戦う", total:30,
-    cards:[["freeze",2], ["hail",2], ["frostbite",2], ["blizzard",2], ["megafrost",2], ["map",2], ["apple",2], ["poisonapple",2], ["slime",2], ["wingoblin",2], ["ghost",2], ["snowslime",2], ["yeti",2], ["yukionna",2], ["windragon",2]] },
+    cards:[["freeze",2], ["icerain",2], ["frostbite",2], ["blizzard",2], ["megafrost",2], ["map",2], ["apple",2], ["poisonapple",2], ["slime",2], ["wintergoblin",2], ["ghost",2], ["snowslime",2], ["yeti",2], ["yukionna",2], ["winterdragon",2]] },
 ];
 
 export const CARD_MAP = {};
